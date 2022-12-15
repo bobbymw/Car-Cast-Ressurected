@@ -26,18 +26,15 @@ import com.jadn.cc.core.CarCastApplication;
 import com.jadn.cc.core.Config;
 import com.jadn.cc.core.MediaMode;
 import com.jadn.cc.trace.ExceptionHandler;
-import com.jadn.cc.util.RecordingSet;
 import com.jadn.cc.util.Updater;
 
 import java.io.File;
 import java.lang.reflect.Method;
 
 public class CarCast extends BaseActivity {
-	final static String tag = CarCast.class.getSimpleName();
 	boolean toggleOnPause;
 	Updater updater;
 	private SharedPreferences app_preferences;
-	int bgcolor;
 	ImageButton pausePlay = null;
     private Config config;
     private File podroot;
@@ -86,24 +83,9 @@ public class CarCast extends BaseActivity {
 		}
 	}
 
-    // Yea, should be something like "Capabilities.has(MICROPHONE)" - but Android doesnt seem to have this
-	private boolean isDeviceWithoutMicrophone() {
-        // From https://developer.amazon.com/appsandservices/solutions/devices/kindle-fire/specifications/01-device-and-feature-specifications
-        // The Kindle Fire HDX has a microphone
-        if ( android.os.Build.MODEL.equals("KFAPWA (WAN)") ||
-                android.os.Build.MODEL.equals("KFAPWI (Wi-Fi)") ){
-            return false;
-        }
-        // Other kindles do not.
-		return android.os.Build.MODEL.equals("Kindle Fire")
-                || android.os.Build.MODEL.startsWith("KF");
-	}
-
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
-		// google handles surprise exceptions
-	    //ExceptionHandler.register(this);
 
 		super.onCreate(savedInstanceState);
 
@@ -163,35 +145,6 @@ public class CarCast extends BaseActivity {
 		previousButton.setSoundEffectsEnabled(true);
 		previousButton.setOnClickListener(new BumpCast(this, false));
 
-		TextView textView = (TextView) findViewById(R.id.title);
-		textView.setOnTouchListener(new OnTouchListener() {
-
-			@Override
-			public boolean onTouch(View v, MotionEvent event) {
-				if (isAudioRecorderOff())
-					return true;
-				if (event.getAction() != MotionEvent.ACTION_UP)
-					return true;
-				// if clicking on the audio recorder (lower 1/3 of screen on 1/2
-				// of right)
-				if (event.getAction() == MotionEvent.ACTION_UP && event.getX() > (v.getWidth() * 0.66)
-						&& (event.getY()) > (v.getHeight() * 0.5)) {
-					try {
-						if (contentService.isPlaying()) {
-							contentService.pauseNow();
-						}
-					} catch (Exception e) {
-						CarCastApplication.esay(e);
-					}
-
-					pausePlay.setImageResource(R.drawable.player_102_play);
-					startActivityForResult(new Intent(CarCast.this, AudioRecorder.class), 0);
-				}
-				return true;
-			}
-
-		});
-
 		app_preferences = PreferenceManager.getDefaultSharedPreferences(this);
 
 		if (!app_preferences.contains("listmax")) {
@@ -202,13 +155,7 @@ public class CarCast extends BaseActivity {
 
 		if (!app_preferences.contains("speedChoice")) {
 			SharedPreferences.Editor editor = app_preferences.edit();
-			editor.putString("speedChoice", "1");
-			editor.commit();
-		}
-
-		if (!app_preferences.contains("variableSpeedEnabled")) {
-			SharedPreferences.Editor editor = app_preferences.edit();
-			editor.putBoolean("variableSpeedEnabled", false);
+			editor.putString("speedChoice", "1.00");
 			editor.commit();
 		}
 
@@ -240,19 +187,6 @@ public class CarCast extends BaseActivity {
 		}
 
 	}
-
-    public boolean isAudioRecorderOff(){
-        if (isDeviceWithoutMicrophone()){
-            return true;
-        }
-        app_preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        if (!app_preferences.contains("audioRecorderOff")) {
-            SharedPreferences.Editor editor = app_preferences.edit();
-            editor.putBoolean("audioRecorderOff", false);
-            editor.commit();
-        }
-        return app_preferences.getBoolean("audioRecorderOff", false);
-    }
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -339,14 +273,7 @@ public class CarCast extends BaseActivity {
 
             TextView titleTextView = (TextView) findViewById(R.id.title);
 
-        RecordingSet recordingSet = new RecordingSet(this);
-        if(isAudioRecorderOff()){
-            recordingSet.clearNotifications();
-            titleTextView.setBackgroundDrawable((Drawable) null);
-        } else {
-            titleTextView.setBackgroundResource(R.drawable.background_319);
-            recordingSet.updateNotification();
-        }
+        titleTextView.setBackground((Drawable) null);
 
         updater = new Updater(handler, mUpdateResults);
 	}
@@ -362,8 +289,9 @@ public class CarCast extends BaseActivity {
 
 
 	public void updateUI() {
-		if (contentService == null)
+		if (contentService == null) {
 			return;
+		}
         if(config == null){
             config = new Config(getApplicationContext());
             podroot = config.getPodcastsRoot();

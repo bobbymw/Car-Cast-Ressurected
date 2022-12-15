@@ -4,21 +4,16 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Date;
 import java.util.List;
 import java.util.SortedSet;
 
 import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.app.Service;
 import android.content.*;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.media.AudioManager;
-import android.media.MediaMetadataRetriever;
-import android.media.RemoteControlClient;
+import android.media.PlaybackParams;
 import android.net.wifi.WifiManager;
 import android.os.Binder;
 import android.os.Bundle;
@@ -30,9 +25,8 @@ import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.KeyEvent;
-import android.widget.Toast;
 
-import com.aocate.media.MediaPlayer;
+import android.media.MediaPlayer;
 import com.jadn.cc.R;
 import com.jadn.cc.core.AudioFocusHelper;
 import com.jadn.cc.core.CarCastApplication;
@@ -43,12 +37,11 @@ import com.jadn.cc.core.MusicFocusable;
 import com.jadn.cc.core.Subscription;
 import com.jadn.cc.core.WifiConnectedReceiver;
 import com.jadn.cc.trace.TraceUtil;
-import com.jadn.cc.ui.CarCast;
 import com.jadn.cc.util.ExportOpml;
-import com.jadn.cc.util.MailRecordings;
 
 public class ContentService extends Service implements MediaPlayer.OnCompletionListener, MusicFocusable {
     private final IBinder binder = new LocalBinder();
+    private final NotificationHelper mNotificationHelper = new NotificationHelper(this);
     int currentPodcastInPlayer = -1;
     DownloadHelper downloadHelper;
     Location location;
@@ -56,12 +49,9 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     MediaPlayer mediaPlayer = null;
     MetaHolder metaHolder;
     SearchHelper searchHelper;
-    // Dummy album art we will pass to the remote control (if the APIs are available).
-    Bitmap mDummyAlbumArt;
 
 
     private PlayStatusListener playStatusListener;
-    RemoteControlClientCompat mRemoteControlClientCompat;
     private Context context;
     private Config config;
     FileSubscriptionHelper subHelper;
@@ -71,8 +61,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         UserRequest,  // paused by user request
         FocusLoss,    // paused because of audio focus loss
     }
-
-    ;
 
     // why did we pause?
     PauseReason mPauseReason = PauseReason.UserRequest;
@@ -95,7 +83,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         this.context = context;
         try {
             if (mediaPlayer == null) {
-                mediaPlayer = new MediaPlayer(context, true);
+                mediaPlayer = new MediaPlayer();
                 fullReset();
             }
         } catch (Exception e) {
@@ -231,20 +219,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         subHelper.deleteAllSubscriptions();
     }
 
-    // used by status when mediaplayer is not started.
-
-    public void deleteCurrentPodcast() {
-        if (mediaMode == MediaMode.Playing) {
-            pauseNow();
-        }
-        metaHolder.get(currentPodcastInPlayer).delete();
-        metaHolder = new MetaHolder(getApplicationContext(), currentFile());
-        if (currentPodcastInPlayer >= metaHolder.getSize()) {
-            currentPodcastInPlayer = 0;
-        }
-        updateRemoteDisplay();
-    }
-
     public void deletePodcast(int position) {
         if (mediaPlayer.isPlaying() && currentPodcastInPlayer == position) {
             pauseNow();
@@ -258,8 +232,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         // If we are playing something after what's deleted, adjust the current
         if (currentPodcastInPlayer > position)
             currentPodcastInPlayer--;
-
-        updateRemoteDisplay();
 
         try {
             fullReset();
@@ -313,12 +285,13 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         if (got == 0 && !app_preferences.getBoolean("notifiyOnZeroDownloads", true)) {
             mNotificationManager.cancel(22);
         } else {
-            Notification notification = new Notification(R.drawable.icon2, "Download complete", System.currentTimeMillis());
 
-            PendingIntent contentIntent = PendingIntent.getActivity(this, 0, new Intent(this, CarCast.class), 0);
-
-            notification.setLatestEventInfo(getBaseContext(), "Downloads Finished", "Downloaded " + got + " podcasts.", contentIntent);
-            notification.flags = Notification.FLAG_AUTO_CANCEL;
+            Notification notification = mNotificationHelper.createNotification(R.drawable.icon2, "Downloads Finished", "Downloaded " + got + " podcasts.");
+            /*
+             Notification notification = new Notification(R.drawable.icon2, "Download complete", System.currentTimeMillis());
+             notification.setLatestEventInfo(getBaseContext(), "Downloads Finished", "Downloaded " + got + " podcasts.", contentIntent);
+            */
+             notification.flags = Notification.FLAG_AUTO_CANCEL;
 
             mNotificationManager.notify(22, notification);
         }
@@ -327,7 +300,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         if (currentPodcastInPlayer >= metaHolder.getSize()) {
             currentPodcastInPlayer = 0;
         }
-        updateRemoteDisplay();
     }
 
     public boolean editSubscription(Subscription original, Subscription modified) {
@@ -347,7 +319,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             mediaPlayer.reset();
         }
 
-        applyVariableSpeedProperties();
 
         if (currentPodcastInPlayer >= metaHolder.getSize())
             return false;
@@ -355,6 +326,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
         mediaPlayer.setDataSource(currentFile().toString());
         mediaPlayer.prepare();
+        applyVariableSpeedProperties();
         mediaPlayer.setOnCompletionListener(this);
 
         mediaPlayer.seekTo(metaHolder.get(currentPodcastInPlayer).getCurrentPos());
@@ -363,21 +335,18 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     private void applyVariableSpeedProperties() {
         SharedPreferences app_preferences = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean variableSpeed = app_preferences.getBoolean("variableSpeedEnabled", false);
-
-        mediaPlayer.setUseService(variableSpeed);
-        mediaPlayer.setEnableSpeedAdjustment(variableSpeed);
 
         Log.d("CarCast", "SPEED CHOICE " + app_preferences.getString("speedChoice", "undefined"));
-        Float speed = null;
+        float speed = 1.00f;
         try {
-            speed = Float.parseFloat(app_preferences.getString("speedChoice", "1.75"));
+            speed = Float.parseFloat(app_preferences.getString("speedChoice", "1.00"));
         } catch (Exception e) {
             Log.d("CarCast", e.getMessage());
-            speed = 1.75f;
         }
 
-        mediaPlayer.setPlaybackSpeed(speed);
+        PlaybackParams playbackParams = mediaPlayer.getPlaybackParams();
+        playbackParams.setSpeed(speed);
+        mediaPlayer.setPlaybackParams(playbackParams);
     }
 
     public int getCount() {
@@ -395,15 +364,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         return getTimeString(currentDuration());
     }
 
-    public Location getLocation() {
-        if (mediaMode == MediaMode.UnInitialized) {
-            return new Location(currentTitle());
-        }
-        return new Location(currentTitle());
-    }
-
     public String getLocationString() {
-        Location useLocation = getLocation();
         if (isPlaying()) {
             return getTimeString(mediaPlayer.getCurrentPosition());
         }
@@ -515,8 +476,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
         currentPodcastInPlayer++;
 
-        updateRemoteDisplay();
-
         if (inTheActOfPlaying)
             play();
         else
@@ -564,9 +523,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
         initDirs();
 
-        // Google handles surprise exceptions now, so we dont have to.
-        //ExceptionHandler.register(this);
-
         partialWakeLock = ((PowerManager) getSystemService(Context.POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
                 CarCastApplication.getAppTitle());
         partialWakeLock.setReferenceCounted(false);
@@ -597,48 +553,19 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         telMgr.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
 
         metaHolder = new MetaHolder(getApplicationContext());
-//		mediaPlayer.setOnCompletionListener(this);
 
         // restore state;
         currentPodcastInPlayer = 0;
 
         restoreState();
 
-//        remoteControlReceiver = new RemoteControlReceiver(this);
-//        IntentFilter intentFilter = new IntentFilter(Intent.ACTION_MEDIA_BUTTON);
-//        priority cribbed from
-//        http://www.gauntface.co.uk/blog/2010/04/14/using-android-headset-buttons-earphone-buttons/
-//        intentFilter.setPriority(10*IntentFilter.SYSTEM_HIGH_PRIORITY);
-//        registerReceiver(remoteControlReceiver, intentFilter);
 
         AudioManager mAudioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
         ComponentName mMediaButtonReceiverComponent = new ComponentName(this, MusicIntentReceiver.class);
         mAudioManager.registerMediaButtonEventReceiver(mMediaButtonReceiverComponent);
 
-        if (mRemoteControlClientCompat == null) {
-            Intent intent = new Intent(Intent.ACTION_MEDIA_BUTTON);
-            intent.setComponent(mMediaButtonReceiverComponent);
-            mRemoteControlClientCompat = new RemoteControlClientCompat(
-                    PendingIntent.getBroadcast(this /*context*/,
-                            0 /*requestCode, ignored*/, intent /*intent*/, 0 /*flags*/)
-            );
-            RemoteControlHelper.registerRemoteControlClient(mAudioManager,
-                    mRemoteControlClientCompat);
-        }
-
-        mRemoteControlClientCompat.setPlaybackState(
-                RemoteControlClient.PLAYSTATE_PAUSED);
-
-        mRemoteControlClientCompat.setTransportControlFlags(
-                RemoteControlClient.FLAG_KEY_MEDIA_PLAY |
-                        RemoteControlClient.FLAG_KEY_MEDIA_PAUSE |
-                        RemoteControlClient.FLAG_KEY_MEDIA_NEXT |
-                        RemoteControlClient.FLAG_KEY_MEDIA_STOP
-        );
-
-        mDummyAlbumArt = BitmapFactory.decodeResource(getResources(), R.drawable.ccp_launcher);
-
-        updateRemoteDisplay();
+        Intent intent = new Intent(Intent.ACTION_MEDIA_BUTTON);
+        intent.setComponent(mMediaButtonReceiverComponent);
 
         // foreground stuff
         try {
@@ -654,30 +581,9 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             }
         }
 
-        // create the Audio Focus Helper, if the Audio Focus feature is available (SDK 8 or above)
-        if (android.os.Build.VERSION.SDK_INT >= 8)
-            mAudioFocusHelper = new AudioFocusHelper(getApplicationContext(), this);
-        else
-            mAudioFocus = AudioFocus.Focused; // no focus feature, so we always "have" audio focus
+        mAudioFocusHelper = new AudioFocusHelper(getApplicationContext(), this);
 
     }
-
-    public void updateRemoteDisplay() {
-        if (currentMeta() != null) {
-            // Update the remote controls
-            mRemoteControlClientCompat.editMetadata(true)
-                    .putString(MediaMetadataRetriever.METADATA_KEY_ARTIST, currentMeta().getFeedName())
-                    .putString(MediaMetadataRetriever.METADATA_KEY_ALBUM, currentMeta().getTitle())
-                    .putString(MediaMetadataRetriever.METADATA_KEY_TITLE, currentMeta().getDescription())
-                    .putLong(MediaMetadataRetriever.METADATA_KEY_DURATION,
-                            currentMeta().getDuration())
-                    .putBitmap(
-                            RemoteControlClientCompat.MetadataEditorCompat.METADATA_KEY_ARTWORK,
-                            mDummyAlbumArt)
-                    .apply();
-        }
-    }
-
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -783,15 +689,13 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             mediaMode = MediaMode.Paused;
             // say(activity, "paused " + currentTitle());
             saveState();
-
-            mRemoteControlClientCompat.setPlaybackState(RemoteControlClient.PLAYSTATE_PAUSED);
         }
         disableNotification();
         // activity.disableJumpButtons();
     }
 
     /**
-     * @returns playing or not
+     * True for playing. False for paused.
      */
     public boolean pauseOrPlay() {
         try {
@@ -803,8 +707,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
                     enableNotification();
                     mediaPlayer.start();
                     mediaMode = MediaMode.Playing;
-                    // activity.enableJumpButtons();
-                    mRemoteControlClientCompat.setPlaybackState(RemoteControlClient.PLAYSTATE_PLAYING);
                 } else {
                     play();
                 }
@@ -829,8 +731,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             mediaPlayer.start();
             mediaMode = MediaMode.Playing;
             saveState();
-
-            mRemoteControlClientCompat.setPlaybackState(RemoteControlClient.PLAYSTATE_PLAYING);
         } catch (Exception e) {
             TraceUtil.report(e);
         }
@@ -842,8 +742,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
         currentPodcastInPlayer = position;
         play();
-        updateRemoteDisplay();
-        mRemoteControlClientCompat.setPlaybackState(RemoteControlClient.PLAYSTATE_PLAYING);
     }
 
     public void previous() {
@@ -856,20 +754,11 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         mediaMode = MediaMode.UnInitialized;
         if (currentPodcastInPlayer > 0) {
             currentPodcastInPlayer--;
-            updateRemoteDisplay();
         }
         if (currentPodcastInPlayer >= metaHolder.getSize())
             return;
         if (playing)
             play();
-
-        // final TextView textView = (TextView) activity
-        // .findViewById(R.id.summary);
-        // textView.setText(currentTitle());
-    }
-
-    public void purgeHeard() {
-        deleteUpTo(currentPodcastInPlayer);
     }
 
     public void resetToDemoSubscriptions() {
@@ -900,20 +789,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         } catch (Throwable e) {
             // bummer.
         }
-    }
-
-    public void setCurrentPaused(int position) {
-        boolean wasPlaying = mediaPlayer.isPlaying();
-        if (wasPlaying) {
-            currentMeta().setCurrentPos(mediaPlayer.getCurrentPosition());
-            mediaPlayer.stop();
-        }
-        mediaMode = MediaMode.Paused;
-        currentPodcastInPlayer = position;
-    }
-
-    public void setMediaMode(MediaMode mediaMode) {
-        this.mediaMode = mediaMode;
     }
 
     // Synchronized: to ensure that maximum one startDownloadingNewPodCasts()
@@ -948,58 +823,55 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         mNotificationManager.cancel(22);
         updateNotification("Downloading podcasts started");
 
-        new Thread() {
-            @Override
-            public void run() {
+        new Thread(() -> {
+            try {
+                partialWakeLock.acquire(60*1000L /*1 minute*/);
+
+                Log.i("CarCast", "starting download thread.");
+                // Lets not the phone go to sleep while doing
+                // downloads....
+                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                WakeLock wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Carcast:ContentServiceDownloadThread");
+
+                WifiManager.WifiLock wifiLock = null;
+
                 try {
-                    partialWakeLock.acquire();
+                    // The intent here is keep the phone from shutting
+                    // down during a download.
+                    wl.acquire(60*1000L /*1 minute*/);
 
-                    Log.i("CarCast", "starting download thread.");
-                    // Lets not the phone go to sleep while doing
-                    // downloads....
-                    PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-                    PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ContentService download thread");
-
-                    WifiManager.WifiLock wifiLock = null;
-
-                    try {
-                        // The intent here is keep the phone from shutting
-                        // down during a download.
-                        wl.acquire();
-
-                        // If we have wifi now, lets hold on to it.
-                        WifiManager wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
-                        if (wifi.isWifiEnabled()) {
-                            wifiLock = wifi.createWifiLock("CarCast");
-                            if (wifiLock != null)
-                                wifiLock.acquire();
-                            Log.i("CarCast", "Locked Wifi.");
-                        }
-
-                        String accounts = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).getString("accounts",
-                                "none");
-
-                        downloadHelper.downloadNewPodCasts(ContentService.this);
-                    } finally {
-                        if (wifiLock != null) {
-                            try {
-                                wifiLock.release();
-                                Log.i("CarCast", "released Wifi.");
-                            } catch (Throwable t) {
-                                Log.i("CarCast", "Yikes, issue releasing Wifi.");
-                            }
-                        }
-
-                        wl.release();
+                    // If we have wifi now, lets hold on to it.
+                    WifiManager wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+                    if (wifi.isWifiEnabled()) {
+                        wifiLock = wifi.createWifiLock("CarCast");
+                        if (wifiLock != null)
+                            wifiLock.acquire();
+                        Log.i("CarCast", "Locked Wifi.");
                     }
-                } catch (Throwable t) {
-                    Log.i("CarCast", "Unpleasentness during download: " + t.getMessage());
+
+                    String accounts = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).getString("accounts",
+                            "none");
+
+                    downloadHelper.downloadNewPodCasts(ContentService.this);
                 } finally {
-                    Log.i("CarCast", "finished download thread.");
-                    partialWakeLock.release();
+                    if (wifiLock != null) {
+                        try {
+                            wifiLock.release();
+                            Log.i("CarCast", "released Wifi.");
+                        } catch (Throwable t) {
+                            Log.i("CarCast", "Yikes, issue releasing Wifi.");
+                        }
+                    }
+
+                    wl.release();
                 }
+            } catch (Throwable t) {
+                Log.i("CarCast", "Unpleasentness during download: " + t.getMessage());
+            } finally {
+                Log.i("CarCast", "finished download thread.");
+                partialWakeLock.release();
             }
-        }.start();
+        }).start();
 
     }
 
@@ -1014,7 +886,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
 
         searchHelper = new ItunesSearchHelper(search);
-        //searchHelper = new SearchHelper(search);
         searchHelper.start();
         return "";
     }
@@ -1028,7 +899,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             for (int i = 0; i < metaHolder.getSize(); i++) {
                 if (metaHolder.get(i).getTitle().equals(location.title)) {
                     currentPodcastInPlayer = i;
-                    updateRemoteDisplay();
                     found = true;
                     break;
                 }
@@ -1051,13 +921,12 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     void updateNotification(String update) {
         NotificationManager mNotificationManager = (NotificationManager) getSystemService(Activity.NOTIFICATION_SERVICE);
 
-        Notification notification = new Notification(R.drawable.iconbusy, "Downloading started", System.currentTimeMillis());
-
-        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, new Intent(this, CarCast.class), 0);
-
-        notification.setLatestEventInfo(getBaseContext(), "Downloading Started", update, contentIntent);
+        Notification notification = mNotificationHelper.createNotification(R.drawable.iconbusy, "Downloading started", "Downloading started");
         notification.flags = Notification.FLAG_ONGOING_EVENT;
-
+        /*
+        Notification notification = new Notification(R.drawable.iconbusy, "Downloading started", System.currentTimeMillis());
+        notification.setLatestEventInfo(getBaseContext(), "Downloading Started", update, contentIntent);
+        */
         mNotificationManager.notify(23, notification);
 
     }
@@ -1168,10 +1037,12 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     private WakeLock partialWakeLock;
 
     void enableNotification() {
-        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, new Intent(this, CarCast.class), 0);
-        Notification notification = new Notification(R.drawable.ccp_launcher, null, System.currentTimeMillis());
+        Notification notification = mNotificationHelper.createNotification(R.drawable.ccp_launcher, getText(R.string.notification_status).toString(), getText(R.string.notification_text).toString());
         notification.flags |= Notification.FLAG_ONGOING_EVENT | Notification.FLAG_NO_CLEAR;
+        /*
+        Notification notification = new Notification(R.drawable.ccp_launcher, null, System.currentTimeMillis());
         notification.setLatestEventInfo(this, getText(R.string.notification_status), getText(R.string.notification_text), contentIntent);
+         */
 
         startForegroundCompat(R.string.notification_status, notification);
 
@@ -1203,88 +1074,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     public void exportOPML(FileOutputStream fileOutputStream) {
         ExportOpml.export(getSubscriptions(), fileOutputStream);
-    }
-
-    Thread publishRecordingsThread;
-
-    public void publishRecordings(final Activity activity) {
-
-        if (publishRecordingsThread != null) {
-            return;
-        }
-
-        publishRecordingsThread = new Thread() {
-            @Override
-            public void run() {
-                try {
-                    partialWakeLock.acquire();
-
-                    Log.i("CarCast", "starting recording thread.");
-                    // Lets not the phone go to sleep while doing
-                    // downloads....
-                    PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
-                    PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ContentService download thread");
-
-                    WifiManager.WifiLock wifiLock = null;
-
-                    try {
-                        // The intent here is keep the phone from shutting
-                        // down during a download.
-                        wl.acquire();
-
-                        // If we have wifi now, lets hold on to it.
-                        WifiManager wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
-                        if (wifi.isWifiEnabled()) {
-                            wifiLock = wifi.createWifiLock("CarCast");
-                            if (wifiLock != null)
-                                wifiLock.acquire();
-                            Log.i("CarCast", "recording Locked Wifi.");
-                        }
-
-                        Thread.sleep(2000); // Give wifi two seconds to stablize
-
-                        MailRecordings.doIt(ContentService.this);
-
-                    } finally {
-                        if (wifiLock != null) {
-                            try {
-                                wifiLock.release();
-                                Log.i("CarCast", "recording released Wifi.");
-                            } catch (Throwable t) {
-                                Log.i("CarCast", "recording Yikes, issue releasing Wifi.");
-                            }
-                        }
-
-                        wl.release();
-                    }
-                } catch (javax.mail.AuthenticationFailedException afe) {
-                    doWarning(activity, "Problem authenticating.  Check username/password.");
-                } catch (final Throwable t) {
-                    Log.i("CarCast", "Unpleasentness during email of recording: " + t.getMessage() + " " + t.getClass());
-                    String msg = t.getMessage();
-                    if (msg == null) {
-                        msg = t.toString();
-                    }
-                    doWarning(activity, msg);
-                } finally {
-                    Log.i("CarCast", "finished recording post thread.");
-                    partialWakeLock.release();
-                    publishRecordingsThread = null;
-                }
-            }
-
-            public void doWarning(Activity activity, final String message) {
-                if (activity != null) {
-                    activity.runOnUiThread(new Runnable() {
-                        public void run() {
-                            Toast.makeText(getApplication(), "Error sending email: " + message, Toast.LENGTH_LONG).show();
-                        }
-                    });
-                }
-            }
-        };
-        publishRecordingsThread.start();
-
     }
 
     /**

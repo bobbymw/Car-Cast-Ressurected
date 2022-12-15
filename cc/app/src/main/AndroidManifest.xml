@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.jadn.cc"
-    android:versionCode="178"
-    android:versionName="1.0.178"
-    android:installLocation="auto" >
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <application
         android:name="com.jadn.cc.core.CarCastApplication"
@@ -11,49 +7,28 @@
         android:label="Car Cast" >
         <activity
             android:name=".ui.CarCast"
-            android:label="Car Cast" >
+            android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name="com.admob.android.ads.AdMobActivity"
-            android:configChanges="orientation|keyboard|keyboardHidden"
-            android:theme="@android:style/Theme.NoTitleBar.Fullscreen" />
-        <receiver
-            android:name="com.admob.android.ads.analytics.InstallReceiver"
-            android:exported="true" >
-            <intent-filter>
-                <action android:name="com.android.vending.INSTALL_REFERRER" />
-            </intent-filter>
-        </receiver>
 
-        <activity android:name=".ui.AudioRecorder" />
         <activity android:name=".ui.OpmlLocator" />
         <activity android:name=".ui.Downloader" />
 
         <receiver
-            android:name="com.jadn.cc.core.WifiConnectedReceiver">
+            android:name="com.jadn.cc.core.WifiConnectedReceiver"
+            android:exported="true" >
                <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 </intent-filter>
         </receiver>
         
         <activity android:name=".ui.DownloadProgress" />
-        <activity android:name=".ui.SubscriptionEdit" >
-
-            <!--
-            intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="itpc" />
-                <data android:scheme="pcast" />
-                <data android:scheme="feed" />
-                <data android:scheme="rss" />
-            </intent-filter
-            -->
+        <activity
+            android:name=".ui.SubscriptionEdit"
+            android:exported="true">
 
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -116,10 +91,8 @@
         <activity android:name=".ui.SearchResults" />
         <activity android:name=".ui.PodcastList" />
         <activity android:name=".ui.FeedbackHelp" />
-        <activity
-            android:name="com.google.ads.AdActivity"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize" />
-        <activity android:name="com.jadn.cc.ui.OpmlImport" >
+        <activity android:name="com.jadn.cc.ui.OpmlImport"
+            android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -131,19 +104,24 @@
                 <data
                     android:host="*"
                     android:pathPattern=".*opml"
+                    android:exported="false"
                    android:mimeType="application/octet-stream"/>
             </intent-filter>
         </activity>
         
-        <service android:name=".services.ContentService" />
+        <service android:name=".services.ContentService"
+            android:exported="true"
+            android:foregroundServiceType="mediaPlayback" />
         <service android:name=".services.AlarmService" />
-        <service android:name=".services.AlarmHostService" >
+        <service android:name=".services.AlarmHostService"
+            android:exported="true" >
             <intent-filter>
                 <action android:name="com.jadn.cc.services.AlarmHostService" />
             </intent-filter>
         </service>
 
-        <receiver android:name=".services.AlarmReceiver" >
+        <receiver android:name=".services.AlarmReceiver"
+            android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
 
@@ -151,7 +129,8 @@
             </intent-filter>
         </receiver>
 
-        <receiver android:name=".services.ExternalReceiver" android:enabled="true" >
+        <receiver android:name=".services.ExternalReceiver" android:enabled="true"
+            android:exported="true" >
             <intent-filter>
                 <action android:name="com.jadn.cc.services.external.PAUSE" />
                 <action android:name="com.jadn.cc.services.external.PLAY" />
@@ -160,13 +139,8 @@
             </intent-filter>
         </receiver>
 
-        <!--
-			<receiver android:name=".services.UnpluggedListener"> <intent-filter>
-			<action android:name="android.intent.action.ACTION_HEADSET_PLUG" />
-			</intent-filter> </receiver>
-        -->
-
-        <receiver android:name=".services.MusicIntentReceiver">
+        <receiver android:name=".services.MusicIntentReceiver"
+            android:exported="true" >
             <intent-filter>
                 <action android:name="android.media.AUDIO_BECOMING_NOISY" />
             </intent-filter>
@@ -178,19 +152,15 @@
     </application>
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.READ_LOGS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <uses-sdk
-        android:minSdkVersion="9"
-        android:targetSdkVersion="17" />
 
     <supports-screens
         android:anyDensity="true"

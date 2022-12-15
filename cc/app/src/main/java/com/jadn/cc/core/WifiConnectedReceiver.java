@@ -1,8 +1,6 @@
 package com.jadn.cc.core;
 
 import com.jadn.cc.services.ContentService;
-import com.jadn.cc.util.Recording;
-import com.jadn.cc.util.RecordingSet;
 
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -26,7 +24,7 @@ public class WifiConnectedReceiver extends BroadcastReceiver {
 	public void onReceive(Context context, Intent intent) {
 
 		final String action = intent.getAction();
-		if (action.equals(WifiManager.SUPPLICANT_CONNECTION_CHANGE_ACTION)) {
+/*		if (action.equals(WifiManager.SUPPLICANT_CONNECTION_CHANGE_ACTION)) {
 			if (intent.getBooleanExtra(WifiManager.EXTRA_SUPPLICANT_CONNECTED, false)) {
 				// if sending recordings on wifi connect
 				Log.i("carcast", "connected");
@@ -61,7 +59,7 @@ public class WifiConnectedReceiver extends BroadcastReceiver {
 
 		} else {
 			// wifi connection was lost
-		}
+		}*/
 	}
 
 }

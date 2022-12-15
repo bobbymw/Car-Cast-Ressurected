@@ -29,11 +29,7 @@ public class ExceptionHandler {
 
 	private static String[] stackTraceFileList = null;
 
-	public static void clearStackTraceCache() {
-		stackTraceFileList = null;
-	}
-
-    public static void setTraceData(Context context){
+	public static void setTraceData(Context context){
         PackageManager pm = context.getPackageManager();
         try {
             PackageInfo pi;

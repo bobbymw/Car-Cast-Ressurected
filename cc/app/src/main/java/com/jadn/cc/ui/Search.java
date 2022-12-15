@@ -47,9 +47,6 @@ public class Search extends BaseActivity {
 
 		setTitle(CarCastApplication.getAppTitle()+": search for new subscriptions");
 
-		// ListView listView = (ListView) findViewById(R.id.siteList);
-		// registerForContextMenu(listView);
-
 		final TextView searchText = (TextView) findViewById(R.id.searchText);
 		final Button searchButton = (Button) findViewById(R.id.searchButton);
 		searchText.setOnEditorActionListener(new OnEditorActionListener(){
@@ -59,7 +56,7 @@ public class Search extends BaseActivity {
 					KeyEvent event) {
 				searchButton.setEnabled(false);
 				searchText.setEnabled(false);
-				Toast.makeText(getContentService(), "Searching....", 1000).show();
+				Toast.makeText(getContentService(), "Searching....", Toast.LENGTH_LONG).show();
 				contentService.startSearch(searchText.getText().toString());
 				updater = new Updater(handler, mUpdateResults);
 				return true;

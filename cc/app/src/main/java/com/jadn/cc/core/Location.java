@@ -8,10 +8,6 @@ import java.util.Properties;
 
 public class Location {
 
-	private static int atoi(Properties prop, String string) {
-		return Integer.parseInt(prop.get(string).toString());
-	}
-
 	public static Location load(File stateFile) throws IOException {
 		try {
 			Properties prop = new Properties();

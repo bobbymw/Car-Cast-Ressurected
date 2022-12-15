@@ -1,17 +1,11 @@
 package com.jadn.cc.services;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,7 +15,6 @@ import java.util.List;
 import javax.xml.parsers.SAXParserFactory;
 
 import android.util.Log;
-import android.widget.TextView;
 
 import com.jadn.cc.core.CarCastApplication;
 import com.jadn.cc.core.Config;
@@ -40,7 +33,6 @@ public class DownloadHelper implements Sayer {
     private int sitesScanned;
     private int totalPodcasts;
 	private int totalSites;
-	private TextView tv;
 	private boolean isRunning = true;
 	StringBuilder sb = new StringBuilder("Getting ready to start downloads\n");
 
