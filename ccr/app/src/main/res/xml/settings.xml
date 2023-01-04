@@ -1,0 +1,76 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:key="autoDownload"
+        android:summary="Download podcasts automatically"
+        android:title="Auto download" />
+    <CheckBoxPreference
+        android:key="autoDelete"
+        android:summary="when downloading, delete &quot;listened to&quot; podcasts"
+        android:title="Automatically delete &quot;listened to&quot; podcasts during downloads" />
+
+    <com.weinmann.ccr.ui.TimePickerPreference
+        android:dialogTitle="Time of day to download podcasts"
+        android:key="timeAutoDownload"
+        android:summary="Set time of day on which to download podcasts"
+        android:title="Download time" />
+
+    <CheckBoxPreference
+        android:defaultValue="true"
+        android:key="wifiDownload"
+        android:summary="Require WIFI for auto download"
+        android:title="Require WIFI" />
+    
+    <CheckBoxPreference
+        android:defaultValue="true"
+        android:key="keep_display_on"
+        android:summary="Keep Display Always On"
+        android:title="Keep Display On" />
+
+    <ListPreference
+        android:dialogTitle="Max podcasts to download per site per run"
+        android:entries="@array/maxs"
+        android:entryValues="@array/maxsValues"
+        android:key="listmax"
+        android:summary="Set max number of downloads to obtain from one site in a run"
+        android:title="Max downloads" />
+
+    <ListPreference
+            android:dialogTitle="Playback speed"
+            android:entries="@array/speedChoice_array"
+            android:entryValues="@array/speedChoice_array"
+            android:key="speedChoice"
+            android:summary="Playback speed"
+            android:title="Playback speed" />
+
+    <CheckBoxPreference
+        android:key="showSplash"
+        android:summary="On startup show splash screen once more"
+        android:title="Enable splash screen" />
+    <CheckBoxPreference
+        android:defaultValue="true"
+        android:key="autoPlayNext"
+        android:summary="When the current podcast finishes, play the next one"
+        android:title="Auto play next" />
+
+    <CheckBoxPreference
+        android:defaultValue="true"
+        android:key="notifiyOnZeroDownloads"
+        android:summary="Show download notification when no downloads?"
+        android:title="Show Zero Downloads?" />
+
+    <ListPreference
+        android:dialogTitle="Orientation Preference"
+        android:entries="@array/orientationChoice_array"
+        android:entryValues="@array/orientationChoice_array"
+        android:key="orientation"
+        android:summary="Specify player orientation"
+        android:title="Orientation Preference" />
+
+    <EditTextPreference
+        android:key="CarCastRoot"
+        android:title="Set data location (loses current subscriptions/podcasts)"
+        android:summary="Changing loses subscriptions and podcasts" />
+
+</PreferenceScreen>
