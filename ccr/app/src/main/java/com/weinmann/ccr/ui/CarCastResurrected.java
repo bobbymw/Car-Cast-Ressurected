@@ -1,8 +1,10 @@
 package com.weinmann.ccr.ui;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
@@ -20,6 +22,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 
 import com.weinmann.ccr.R;
@@ -43,12 +46,7 @@ public class CarCastResurrected extends BaseActivity {
 	final Handler handler = new Handler();
 
 	// Create runnable for posting
-	final Runnable mUpdateResults = new Runnable() {
-		@Override
-		public void run() {
-			updateUI();
-		}
-	};
+	final Runnable mUpdateResults = () -> updateUI();
 
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -57,12 +55,6 @@ public class CarCastResurrected extends BaseActivity {
 		if (requestCode == MANAGE_EXTERNAL_STORAGE_PERMISSION_REQUEST) {
 			contentService.resetPodcastDir();
 		}
-		updateUI();
-	}
-
-	@Override
-	public void playStateUpdated(boolean playing) {
-		updatePausePlay();
 		updateUI();
 	}
 
@@ -99,32 +91,25 @@ public class CarCastResurrected extends BaseActivity {
 
 		ProgressBar progressBar = findViewById(R.id.progress);
 		progressBar.setProgress(0);
-		progressBar.setOnTouchListener(new OnTouchListener() {
-
-			@Override
-			public boolean onTouch(View v, MotionEvent event) {
-				contentService.moveTo(event.getX() / v.getWidth());
-				updateUI();
-				return true;
-			}
+		progressBar.setOnTouchListener((v, event) -> {
+			contentService.moveTo(event.getX() / v.getWidth());
+			updateUI();
+			return true;
 		});
 
 		final ImageButton pausePlay = findViewById(R.id.pausePlay);
 		pausePlay.setBackgroundColor(0x0);
 		pausePlay.setSoundEffectsEnabled(true);
 		pausePlay.setImageResource(R.drawable.player_102_play);
-		pausePlay.setOnClickListener(new OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				if (contentService.getCount() == 0)
-					return;
-				if (contentService.pauseOrPlay()) {
-					pausePlay.setImageResource(R.drawable.player_102_pause);
-				} else {
-					pausePlay.setImageResource(R.drawable.player_102_play);
-				}
-				updateUI();
+		pausePlay.setOnClickListener(v -> {
+			if (contentService.getCount() == 0)
+				return;
+			if (contentService.pauseOrPlay()) {
+				pausePlay.setImageResource(R.drawable.player_102_pause);
+			} else {
+				pausePlay.setImageResource(R.drawable.player_102_play);
 			}
+			updateUI();
 		});
 
 		ImageButton rewind30Button = findViewById(R.id.rewind30);
@@ -170,9 +155,10 @@ public class CarCastResurrected extends BaseActivity {
 
 	}
 
+	@SuppressLint("NewApi")
 	@Override
 	public void onRequestPermissionsResult(int requestCode,
-										   @NonNull String permissions[],
+										   @NonNull String[] permissions,
 										   @NonNull int[] grantResults) {
 		getManageAllFilesPermission();
 		super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -211,7 +197,7 @@ public class CarCastResurrected extends BaseActivity {
 			startActivity(new Intent(this, CcrSettings.class));
 			return true;
 		}
-        if (item.getItemId() == R.id.stats) {
+		if (item.getItemId() == R.id.stats) {
             startActivity(new Intent(this, Stats.class));
             return true;
         }
@@ -250,32 +236,32 @@ public class CarCastResurrected extends BaseActivity {
 	}
 
 	public void updateUI() {
-		if (contentService == null || config.arePermissionsConfigured() == false) {
+		if (contentService == null || !config.arePermissionsConfigured()) {
 			return;
 		}
 
 		try {
-			File podroot = config.getPodcastsRoot();
-			if (!podroot.exists() || !podroot.canWrite()) {
-				if (!podroot.mkdirs() || !podroot.canWrite()) {
-					TextView textView = (TextView) findViewById(R.id.title);
+			File podcastsRoot = config.getPodcastsRoot();
+			if (!podcastsRoot.exists() || !podcastsRoot.canWrite()) {
+				if (!podcastsRoot.mkdirs() || !podcastsRoot.canWrite()) {
+					TextView textView = findViewById(R.id.title);
 					StringBuilder sb = new StringBuilder();
-					sb.append("ERROR ** " + CarCastResurrectedApplication.getAppTitle() + " cannot write to storage: "+podroot+" ** ");
+					sb.append("ERROR ** " + CarCastResurrectedApplication.getAppTitle() + " cannot write to storage: "+podcastsRoot+" ** ");
 					sb.append(moreSpaceSuggestions());
 					textView.setText(sb.toString());
 					return;
 				}
 			}
 
-			TextView textView = (TextView) findViewById(R.id.subscriptionName);
+			TextView textView = findViewById(R.id.subscriptionName);
 			textView.setText(contentService.getCurrentSubscriptionName());
 
-			textView = (TextView) findViewById(R.id.title);
+			textView = findViewById(R.id.title);
 			textView.setText(contentService.currentTitle());
 
-			textView = (TextView) findViewById(R.id.location);
+			textView = findViewById(R.id.location);
 			if (contentService.getMediaMode() == MediaMode.Paused) {
-				if (toggleOnPause == true) {
+				if (toggleOnPause) {
 					toggleOnPause = false;
 					textView.setText("");
 				} else {
@@ -286,13 +272,13 @@ public class CarCastResurrected extends BaseActivity {
 				textView.setText(contentService.getLocationString());
 			}
 
-			textView = (TextView) findViewById(R.id.where);
+			textView = findViewById(R.id.where);
 			textView.setText(contentService.getWhereString());
 
-			textView = (TextView) findViewById(R.id.duration);
+			textView = findViewById(R.id.duration);
 			textView.setText(contentService.getDurationString());
 
-			ProgressBar progressBar = (ProgressBar) findViewById(R.id.progress);
+			ProgressBar progressBar = findViewById(R.id.progress);
 			progressBar.setProgress(contentService.currentProgress());
 			updatePausePlay();
 
@@ -327,6 +313,7 @@ public class CarCastResurrected extends BaseActivity {
         }
     }
 
+	@RequiresApi(api = Build.VERSION_CODES.R)
 	private void getManageAllFilesPermission() {
 		if (!config.arePermissionsConfigured()){
 			Intent intent = new Intent();

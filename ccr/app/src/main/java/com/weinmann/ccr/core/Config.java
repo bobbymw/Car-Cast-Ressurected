@@ -14,20 +14,21 @@ import android.util.Log;
 import androidx.core.content.ContextCompat;
 
 public class Config {
-    Context context;
-    public static String[] requestedPermissions = {
+    public static final String[] requestedPermissions = {
                     Manifest.permission.READ_PHONE_STATE,
                     Manifest.permission.READ_EXTERNAL_STORAGE,
                     Manifest.permission.WRITE_EXTERNAL_STORAGE
             };
-    private static String[] orientations = { "AUTO", "Landscape", "Flipped Landscape", "Portrait", "Flipped Portrait" };
-    private static int[] orientationValues = {
+    private static final String[] orientations = { "AUTO", "Landscape", "Flipped Landscape", "Portrait", "Flipped Portrait" };
+    private static final int[] orientationValues = {
             ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR,
             ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE,
             ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE,
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT,
             ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
     };
+
+    final Context context;
 
     public Config(Context context) {
         this.context = context;
@@ -102,8 +103,8 @@ public class Config {
                 Environment.isExternalStorageManager());
 
         if (result) {
-            for (int i = 0; i < requestedPermissions.length; i++) {
-                int permissionResult = ContextCompat.checkSelfPermission(context, requestedPermissions[i]);
+            for (String requestedPermission : requestedPermissions) {
+                int permissionResult = ContextCompat.checkSelfPermission(context, requestedPermission);
                 if (permissionResult != PackageManager.PERMISSION_GRANTED) {
                     result = false;
                     break;

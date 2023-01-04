@@ -23,10 +23,10 @@ import com.weinmann.ccr.core.Sayer;
 public class DownloadHistory implements Sayer {
     private static final String UNKNOWN_SUBSCRIPTION = "unknown";
     private final static String HISTORY_TWO_HEADER = "history version 2";
-    private List<HistoryEntry> historyEntries = new ArrayList<HistoryEntry>();
-    StringBuilder sb = new StringBuilder();
+    private List<HistoryEntry> historyEntries = new ArrayList<>();
+    private final StringBuilder sb = new StringBuilder();
 
-    Context context;
+    private final Context context;
 //    private static File historyFile = new File(Config.PodcastsRoot, "history.prop");
 
 
@@ -95,7 +95,7 @@ public class DownloadHistory implements Sayer {
      */
     public int eraseHistory() {
         int size = historyEntries.size();
-        historyEntries = new ArrayList<HistoryEntry>();
+        historyEntries = new ArrayList<>();
         save();
         return size;
     }
@@ -107,7 +107,7 @@ public class DownloadHistory implements Sayer {
      */
     public int eraseHistory(String subscription) {
         int size = historyEntries.size();
-        List<HistoryEntry> nh = new ArrayList<HistoryEntry>();
+        List<HistoryEntry> nh = new ArrayList<>();
         for (HistoryEntry he : historyEntries) {
             if (!he.subscription.equals(subscription))
                 nh.add(he);

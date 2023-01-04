@@ -18,9 +18,9 @@ import com.weinmann.ccr.core.Config;
 
 /** Meta information about podcasts. **/
 public class MetaHolder {
-    private Config config;
+	private final Config config;
 
-	private List<MetaFile> metas = new ArrayList<MetaFile>();
+	private final List<MetaFile> metas = new ArrayList<>();
 
 	public MetaHolder(Context context) {
         	this(context, null);
@@ -52,7 +52,7 @@ public class MetaHolder {
 		File[] files = config.getPodcastsRoot().listFiles();
         File order = config.getPodcastRootPath("podcast-order.txt");
 
-        if (files == null)
+		if (files == null)
 			return;
 
 		// Load files in proper order
@@ -64,11 +64,10 @@ public class MetaHolder {
 					File file = config.getPodcastRootPath(line);
 					if (file.exists()) {
 						metas.add(new MetaFile(file));
-                                                if ( currentName != null && currentName.equals(file.getName()) )
-                                                {
-                                                   currentIndex = metas.size() - 1;
-	                                           Log.d("CarCastResurrected", "currentIndex: " + currentIndex);
-                                                }
+						if (currentName != null && currentName.equals(file.getName()) ) {
+							currentIndex = metas.size() - 1;
+							Log.d("CarCastResurrected", "currentIndex: " + currentIndex);
+						}
 					}
 				}
 			} catch (IOException e) {
@@ -107,7 +106,7 @@ public class MetaHolder {
 		   currentIndex = -1;
 
 		// Look for "Found Files" -- not in ordered list... but sitting in the directory
-		ArrayList<File> foundFiles = new ArrayList<File>();
+		ArrayList<File> foundFiles = new ArrayList<>();
 		for (File file : files) {
 			if (file.length() == 0) {
 				file.delete();
@@ -131,12 +130,7 @@ public class MetaHolder {
 			}
 		}
 		// Order the found files by file name.
-		Collections.sort(foundFiles, new Comparator<File>() {
-			@Override
-			public int compare(File object1, File object2) {
-				return object1.getName().compareTo(object2.getName());
-			}
-		});
+		foundFiles.sort((object1, object2) -> object1.getName().compareTo(object2.getName()));
 		Log.i("CarCastResurrected", "loadMeta found:"+foundFiles.size()+" meta:"+metas.size());
 		for (File file : foundFiles) {
                      metas.add(new MetaFile(file));
@@ -160,11 +154,11 @@ public class MetaHolder {
 	}
 
 	public SortedSet<Integer> moveTop(SortedSet<Integer> checkedItems) {
-		List<MetaFile> tops = new ArrayList<MetaFile>();
-		Integer[] ciArry = checkedItems.toArray(new Integer[0]);
+		List<MetaFile> tops = new ArrayList<>();
+		Integer[] ciArray = checkedItems.toArray(new Integer[0]);
 		for (int i = checkedItems.size() - 1; i >= 0; i--) {
-			tops.add(0, metas.get(ciArry[i]));
-			metas.remove(metas.get(ciArry[i]));
+			tops.add(0, metas.get(ciArray[i]));
+			metas.remove(metas.get(ciArray[i]));
 		}
 		for (MetaFile metaFile : tops) {
 			metas.add(0, metaFile);
@@ -199,15 +193,13 @@ public class MetaHolder {
 	}
 
 	public SortedSet<Integer> moveBottom(SortedSet<Integer> checkedItems) {
-		List<MetaFile> bottoms = new ArrayList<MetaFile>();
-		Integer[] ciArry = checkedItems.toArray(new Integer[0]);
+		List<MetaFile> bottoms = new ArrayList<>();
+		Integer[] ciArray = checkedItems.toArray(new Integer[0]);
 		for (int i = checkedItems.size() - 1; i >= 0; i--) {
-			bottoms.add(0, metas.get(ciArry[i]));
-			metas.remove(metas.get(ciArry[i]));
+			bottoms.add(0, metas.get(ciArray[i]));
+			metas.remove(metas.get(ciArray[i]));
 		}
-		for (MetaFile metaFile : bottoms) {
-			metas.add(metaFile);
-		}
+		metas.addAll(bottoms);
 		checkedItems.clear();
 		for (MetaFile atop : bottoms) {
 			checkedItems.add(metas.indexOf(atop));
@@ -263,5 +255,3 @@ public class MetaHolder {
         }
 
 }
-
-// vim: set noet ci pi sts=0 sw=4 ts=4

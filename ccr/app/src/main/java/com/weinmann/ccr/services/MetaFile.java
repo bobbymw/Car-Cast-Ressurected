@@ -14,7 +14,7 @@ import android.util.Log;
  */
 public class MetaFile {
 
-	File file;
+	final File file;
 	Properties properties = new Properties();
         private static final String defaultBaseFilename = "0";
 	
@@ -56,7 +56,7 @@ public class MetaFile {
 
            // Find start of base file name.
            int slashIndex = name.lastIndexOf('/');
-           // slashIndex is -1 if no slash is present, which works perfactly below!
+           // slashIndex is -1 if no slash is present, which works perfectly below!
 
            // Find end of base file name.
            int i = slashIndex + 1;
@@ -131,10 +131,6 @@ public class MetaFile {
 			return title.substring(0, lastDot);
 		}
 		return properties.get("title").toString();
-	}
-
-	public String getUrl() {
-		return properties.getProperty("url");
 	}
 
 	public void save() {

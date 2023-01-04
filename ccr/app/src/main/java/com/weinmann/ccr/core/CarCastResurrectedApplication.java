@@ -5,7 +5,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.content.pm.PackageInfo;
 import android.os.IBinder;
 import android.util.Log;
 
@@ -38,7 +37,7 @@ public class CarCastResurrectedApplication extends Application {
             "26-Jan-2013", "BETA3 feature Audio Note mailer\n\nConfigure receiver email address\nmenu item to send auto notes on demand",
             "24-Jan-2013", "BETA2 feature - more working\n\nAutomatically forward Audio Notes to your email when you connect to WiFi.",
             "21-Jan-2013", "BETA feature\n\nAutomatically forward Audio Notes to your email when you connect to WiFi.",
-            "17-Jan-2013", "Two new preferences\n\nAuto delete \"Listened To\" Podcasts (during download)\n\nDon't warn when downloading on dataplan (aka unlimited dataplan)",
+            "17-Jan-2013", "Two new preferences\n\nAuto delete \"Listened To\" Podcasts (during download)\n\nDon't warn when downloading on data plan (aka unlimited data plan)",
             "22-Dec-2012", "You can now Export and Import your subscriptions using OPML (tested via email)",
             "08-Aug-2012j", "OnSale",
             "07-Aug-2012", "Add 'Export OPML' to Subscriptions screen (used to transfer subscriptions from phone to phone.)\n\nDont yet have OPML Import... coming soon.",
@@ -52,7 +51,7 @@ public class CarCastResurrectedApplication extends Application {
             "10-Mar-2012", "Add new Setting -> if no downloads then don't show notification.",
             "25-Sep-2011", "For some headphone pause buttons and bluetooth pause buttons, CarCast now pauses.",
             "11-Sep-2011", "Fix: A change to keep the Archos tablet from sleeping during downloads.\n\nThanks Stephen Blott!",
-            "22-Aug-2011", "Fix: Dont leave notification icon up after end of podcast(s) reached.",
+            "22-Aug-2011", "Fix: Don't leave notification icon up after end of podcast(s) reached.",
             "17-Aug-2011", "Fix: Click on podcast link from a web browser, will show/add subscription to CarCast.",
             "14-Aug-2011a", "Hopefully a fix for Foreground/Background issues.\n\nThanks to Baruch Even!!!\nhttp://baruch.ev-en.org/",
             "11-Aug-2011",
@@ -78,7 +77,7 @@ public class CarCastResurrectedApplication extends Application {
             "01-Apr-2011",
             "Another fix to podcast character encodings",
             "30-Mar-2011",
-            "Fix podcasts encodeded in Windows-1252 (I hate non UTF8 character encoding.)",
+            "Fix podcasts encoded in Windows-1252 (I hate non UTF8 character encoding.)",
             "27-Mar-2011",
             "Fixed Spanish/Latin Subscriptions.  Made subscription 'Test' show working message.",
             "28-Feb-2011",
@@ -110,7 +109,7 @@ public class CarCastResurrectedApplication extends Application {
             "9-Oct-2010",
             "Minor adjustments to main screen layout.",
             "6-Oct-2010",
-            "Fix feedback email (headsmack), fix Podcast and Subscription screens so delete doesnt loose place.  Also delete last works right.  Thanks Yoav Weiss!",
+            "Fix feedback email (headsmack), fix Podcast and Subscription screens so delete doesn't lose place.  Also delete last works right.  Thanks Yoav Weiss!",
             "1-Oct-2010",
             "Added confirm to 'Delete All' menu item on Podcasts screen for Jim Fulner.",
             "21-Sep-2010",
@@ -152,7 +151,7 @@ public class CarCastResurrectedApplication extends Application {
             "21-Nov",
             "On Podcasts, touching a podcast will cause it to play.  Thanks to Tom Howes.",
             "09-Nov",
-            "Fix botch to yesterday's max 'ulimited' downloads fix.",
+            "Fix botch to yesterday's max 'unlimited' downloads fix.",
             "08-Nov",
             "Shackman found setting max downloads to unlimited was broken.  Fixed.  Thanks.",
             "04-Nov",
@@ -181,7 +180,7 @@ public class CarCastResurrectedApplication extends Application {
             "13-Sep-2009", //
             "rc5", "Fix crash when choosing 'Search Again' on search results - sheesh.", "12-Sep-2009", //
             "rc4", "Clicking on podcast title switches to Audio Recorder", "07-Sep-2009", //
-            "rc3", "Trippled size of podcast database for searches", "05-Sep-2009", //
+            "rc3", "Tripled size of podcast database for searches", "05-Sep-2009", //
             "rc2", "Treat .m4a like .mp3\nThanks to Daniel Browne!!", "03-Sep-2009", //
             "beta rc1", "fix subscription longpress", "01-Sep-2009", //
             "adc2", "package rename", "31-Aug-2009", //
@@ -196,7 +195,7 @@ public class CarCastResurrectedApplication extends Application {
             "nanobots2", "added delete page", "21-Aug-2009", //
             "monkey2", "add podcast list", "18-Aug-2009", //
             "llama, llama Red Pajama", "Bow to Ed", "17-Aug-2009", //
-            "klondike", "remove extranous features", "14-Aug-2009", //
+            "klondike", "remove extraneous features", "14-Aug-2009", //
             "Jumping Jackrabbit", "rework package structure", "11-Aug-2009", //
             "Himalayas", "Uses actual service class for handing media content.", "06-Aug-2009", //
             "ice cream 4", "pings home every 15.  Immediately on wifi connect.", //
@@ -216,13 +215,13 @@ public class CarCastResurrectedApplication extends Application {
         //WifiConnectedReceiver.registerForWifiBroadcasts(getApplicationContext());
     }
 
-    private ServiceConnection contentServiceConnection = new ServiceConnection() {
+    private final ServiceConnection contentServiceConnection = new ServiceConnection() {
         @Override
-        public void onServiceConnected(ComponentName name, IBinder iservice) {
-            Log.i("CarCast", "onServiceConnected; CN is " + name + "; binder is " + iservice);
+        public void onServiceConnected(ComponentName name, IBinder iService) {
+            Log.i("CarCast", "onServiceConnected; CN is " + name + "; binder is " + iService);
             if (name.getClassName().equals(ContentService.class.getName())) {
-                contentService = ((LocalBinder) iservice).getService();
-                contentService.setApplicationContext(getApplicationContext());
+                contentService = ((LocalBinder) iService).getService();
+                contentService.resetMediaPlayer();
                 contentServiceListener.onContentServiceChanged(contentService);
             }
         }
@@ -232,7 +231,7 @@ public class CarCastResurrectedApplication extends Application {
             Log.i("CarCast", "onServiceDisconnected; CN is " + name);
             if (name.getClassName().equals(ContentService.class.getName())) {
                 contentService = null;
-                contentServiceListener.onContentServiceChanged(contentService);
+                contentServiceListener.onContentServiceChanged(null);
             }
         }
     };

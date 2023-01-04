@@ -26,8 +26,8 @@ public class Search extends BaseActivity {
 				if (contentService.startSearch("-results-").equals("")) {
 					Toast.makeText(getApplicationContext(),
 							"No Results Found.", Toast.LENGTH_LONG).show();
-					TextView searchText = (TextView) findViewById(R.id.searchText);
-					Button searchButton = (Button) findViewById(R.id.searchButton);
+					TextView searchText = findViewById(R.id.searchText);
+					Button searchButton = findViewById(R.id.searchButton);
 					searchButton.setEnabled(true);
 					searchText.setEnabled(true);
 				} else {
@@ -47,29 +47,22 @@ public class Search extends BaseActivity {
 
 		setTitle(CarCastResurrectedApplication.getAppTitle()+": search for new subscriptions");
 
-		final TextView searchText = (TextView) findViewById(R.id.searchText);
-		final Button searchButton = (Button) findViewById(R.id.searchButton);
-		searchText.setOnEditorActionListener(new OnEditorActionListener(){
+		final TextView searchText = findViewById(R.id.searchText);
+		final Button searchButton = findViewById(R.id.searchButton);
+		searchText.setOnEditorActionListener((v, actionId, event) -> {
+			searchButton.setEnabled(false);
+			searchText.setEnabled(false);
+			Toast.makeText(getContentService(), "Searching....", Toast.LENGTH_LONG).show();
+			contentService.startSearch(searchText.getText().toString());
+			updater = new Updater(handler, mUpdateResults);
+			return true;
+		});
 
-			@Override
-			public boolean onEditorAction(TextView v, int actionId,
-					KeyEvent event) {
-				searchButton.setEnabled(false);
-				searchText.setEnabled(false);
-				Toast.makeText(getContentService(), "Searching....", Toast.LENGTH_LONG).show();
-				contentService.startSearch(searchText.getText().toString());
-				updater = new Updater(handler, mUpdateResults);
-				return true;
-			}});
-
-		searchButton.setOnClickListener(new OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				searchButton.setEnabled(false);
-				searchText.setEnabled(false);
-				contentService.startSearch(searchText.getText().toString());
-				updater = new Updater(handler, mUpdateResults);
-			}
+		searchButton.setOnClickListener(v -> {
+			searchButton.setEnabled(false);
+			searchText.setEnabled(false);
+			contentService.startSearch(searchText.getText().toString());
+			updater = new Updater(handler, mUpdateResults);
 		});
 
 	}
@@ -84,8 +77,8 @@ public class Search extends BaseActivity {
 	@Override
 	protected void onResume() {
 		super.onResume();
-		TextView searchText = (TextView) findViewById(R.id.searchText);
-		Button searchButton = (Button) findViewById(R.id.searchButton);
+		TextView searchText = findViewById(R.id.searchText);
+		Button searchButton = findViewById(R.id.searchButton);
 		searchButton.setEnabled(true);
 		searchText.setEnabled(true);
 	}

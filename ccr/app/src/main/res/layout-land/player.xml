@@ -37,7 +37,7 @@
         android:layout_above="@id/pausePlay"
         android:layout_alignParentLeft="true"
         android:text="XX:XX"
-        android:textSize="20dp" />
+        android:textSize="20sp" />
 
     <TextView
         android:id="@+id/where"
@@ -46,7 +46,7 @@
         android:layout_above="@id/pausePlay"
         android:layout_centerInParent="true"
         android:text="XX:XX"
-        android:textSize="20dp" />
+        android:textSize="20sp" />
 
     <TextView
         android:id="@+id/duration"
@@ -55,7 +55,7 @@
         android:layout_above="@id/pausePlay"
         android:layout_alignParentRight="true"
         android:text="XX:XX"
-        android:textSize="20dp" />
+        android:textSize="20sp" />
 
     <SeekBar
         android:id="@+id/progress"
@@ -97,7 +97,7 @@
         android:singleLine="true"
         android:text=""
         android:textColor="#000"
-        android:textSize="20dp" />
+        android:textSize="20sp" />
 
     <TextView
         android:id="@+id/title"
@@ -107,7 +107,7 @@
         android:layout_below="@id/subscriptionName"
         android:text=""
         android:textColor="#FFF"
-        android:textSize="20dp"
+        android:textSize="20sp"
         android:textStyle="bold" />
 
 </RelativeLayout>

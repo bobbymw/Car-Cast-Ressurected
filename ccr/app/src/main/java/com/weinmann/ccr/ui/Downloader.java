@@ -2,7 +2,6 @@ package com.weinmann.ccr.ui;
 
 import java.io.BufferedReader;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.LinkedList;
@@ -21,7 +20,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.weinmann.ccr.R;
-import com.weinmann.ccr.core.CarCastResurrectedApplication;
 import com.weinmann.ccr.core.Sayer;
 import com.weinmann.ccr.util.Updater;
 
@@ -31,7 +29,7 @@ import com.weinmann.ccr.util.Updater;
  * @author bob
  *
  */
-public class Downloader extends BaseActivity implements Sayer, Runnable {
+public class Downloader extends BaseActivity implements Runnable {
 
 	final Handler handler = new Handler() {
 		@Override
@@ -49,64 +47,7 @@ public class Downloader extends BaseActivity implements Sayer, Runnable {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.download);
 
-		tv = (TextView) findViewById(R.id.textconsole);
-	}
-
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		MenuInflater inflater = getMenuInflater();
-		inflater.inflate(R.menu.downloads_menu, menu);
-		return true;
-	}
-
-	@Override
-	public boolean onMenuItemSelected(int featureId, MenuItem item) {
-        Toast.makeText(getApplicationContext(), "Creating email report...", Toast.LENGTH_LONG).show();
-
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Intent emailIntent = new Intent(android.content.Intent.ACTION_SEND);
-                emailIntent.setType("plain/text");
-                emailIntent.putExtra(android.content.Intent.EXTRA_EMAIL,
-                        new String[] { "carcast-devs@googlegroups.com", "bob@jadn.com" });
-                emailIntent.putExtra(android.content.Intent.EXTRA_SUBJECT,
-                        "Issue on download...");
-
-                // need to clean these up at some point
-                String strFile = Environment.getExternalStorageDirectory().getAbsolutePath() + "/ccreprt"+System.currentTimeMillis()+".txt.gz";
-
-                StringBuilder sb = new StringBuilder();
-                sb.append("Thanks. Please describe the problem. \n\n=== Basic Info ===\n");
-                sb.append("\nCar Cast Resurrected Download output\n====================\n");
-                sb.append(tv.getText());
-                sb.append("\nLog snapshot\n============\n");
-                fetchLog(sb);
-
-                try {
-                    GZIPOutputStream gzipOutputStream  = new GZIPOutputStream(new FileOutputStream(strFile));
-                    gzipOutputStream.write(sb.toString().getBytes());
-                    gzipOutputStream.close();
-
-                    emailIntent.putExtra(Intent.EXTRA_STREAM,
-                            Uri.parse("file://" + strFile));
-
-                    emailIntent.putExtra(android.content.Intent.EXTRA_TEXT, "This email includes an attachment which describes the internals of your phone when CarCastResurrected was running.\n\nPlease add to here, (1) what is the problem as you see it?  (2) Does it happen everytime?\n\nThanks\n");
-                } catch (IOException e) {
-                    e.printStackTrace();
-
-                    emailIntent.putExtra(android.content.Intent.EXTRA_TEXT, "Bah! couldnt attach report: " + e.getMessage());
-                }
-
-
-                startActivity(Intent.createChooser(emailIntent,
-                        "Email about podcast downloading"));
-
-            }
-        }).start();
-
-
-		return true;
+		tv = findViewById(R.id.textconsole);
 	}
 
 	@Override
@@ -136,45 +77,4 @@ public class Downloader extends BaseActivity implements Sayer, Runnable {
 		}
 	}
 
-	@Override public void say(String text) {
-		Message message = Message.obtain();
-		Bundle bundle = new Bundle();
-		bundle.putCharSequence("text", text + "\n");
-		message.setData(bundle);
-		handler.sendMessage(message);
-	}
-
-	void fetchLog(StringBuilder log) {
-		BufferedReader reader = null;
-		try {
-			Process process = Runtime.getRuntime().exec(
-					new String[] { "logcat", "-v", "time", "-d" });
-			reader = new BufferedReader(new InputStreamReader(process
-					.getInputStream()));
-			String line;
-			LinkedList<String> lines = new LinkedList<String>();
-			while ((line = reader.readLine()) != null) {
-				// life's too short to ever look at these again.
-				if(line.startsWith("D/dalvikvm(")&& line.indexOf("GC freed")!=-1)
-					continue;
-				lines.add(line);
-				if(lines.size()>1000){
-					lines.remove(0);
-				}
-			}
-			for (String aline : lines) {
-				log.append(aline);
-				log.append('\n');
-			}
-			System.out.println("Captured "+lines+" lines.");
-		} catch (IOException e) {
-			log.append("Problem running logcat: " + e.getMessage());
-		} finally {
-			if (reader != null)
-				try {
-					reader.close();
-				} catch (IOException e) {
-				}
-		}
-	}
 }

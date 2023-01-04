@@ -14,8 +14,8 @@ import com.weinmann.ccr.ui.CarCastResurrected;
 
 public class NotificationHelper {
 
-    private Context mContext;
-    private NotificationCompat.Builder mBuilder;
+    private final Context mContext;
+    private final NotificationCompat.Builder mBuilder;
     private NotificationChannel mChannel;
     public static final int IMPORTANCE = NotificationManager.IMPORTANCE_NONE;
     public static final String NOTIFICATION_CHANNEL_ID = "10001";
@@ -29,7 +29,6 @@ public class NotificationHelper {
 
     public Notification buildNotification(int icon, String title, String message)
     {
-        /**Creates an explicit intent for an Activity in your app**/
         Intent resultIntent = new Intent(mContext , CarCastResurrected.class);
         resultIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
@@ -45,7 +44,7 @@ public class NotificationHelper {
 
         NotificationManager notificationManager = (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
 
-        if (mChannel == null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
+        if (mChannel == null)
         {
             mChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, "NOTIFICATION_CHANNEL_NAME", IMPORTANCE);
             mChannel.enableLights(false);

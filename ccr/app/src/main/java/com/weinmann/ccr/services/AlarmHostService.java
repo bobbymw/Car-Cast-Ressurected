@@ -8,9 +8,7 @@ import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.net.wifi.WifiManager;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.util.Log;
@@ -47,7 +45,7 @@ public class AlarmHostService extends Service {
  				Integer.valueOf(time.split(":")[1])).getTime().getTime();
  		
  		//Add a day if the hour has passed
- 		if (alarmTime < currentCalendar.getTime().getTime())
+		if (alarmTime < currentCalendar.getTime().getTime())
  			alarmTime = alarmTime + AlarmManager.INTERVAL_DAY;
  		
 		am.setRepeating(AlarmManager.RTC_WAKEUP, alarmTime, AlarmManager.INTERVAL_DAY, alarm_sender);

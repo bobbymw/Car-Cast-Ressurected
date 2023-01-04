@@ -120,16 +120,6 @@
             </intent-filter>
         </receiver>
 
-        <receiver android:name=".services.ExternalReceiver" android:enabled="true"
-            android:exported="true" >
-            <intent-filter>
-                <action android:name="com.weinmann.ccr.services.external.PAUSE" />
-                <action android:name="com.weinmann.ccr.services.external.PLAY" />
-                <action android:name="com.weinmann.ccr.services.external.PAUSEPLAY" />
-                <action android:name="com.weinmann.ccr.services.external.DOWNLOAD" />
-            </intent-filter>
-        </receiver>
-
         <receiver android:name=".services.MusicIntentReceiver"
             android:exported="true" >
             <intent-filter>

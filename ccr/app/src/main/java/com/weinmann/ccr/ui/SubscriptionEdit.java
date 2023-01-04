@@ -37,7 +37,7 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 			((CheckBox) findViewById(R.id.enabled)).setChecked(currentSub.enabled);
 			((CheckBox) findViewById(R.id.priority)).setChecked(currentSub.priority);
 			((CheckBox) findViewById(R.id.fifoLifo)).setChecked(currentSub.orderingPreference == OrderingPreference.FIFO);
-			Spinner spinner = (Spinner) findViewById(R.id.subMax);
+			Spinner spinner = findViewById(R.id.subMax);
 			int max = currentSub.maxDownloads;
 			for (int i = 0; i < mValues.length; i++) {
 				if (max == mValues[i])
@@ -54,63 +54,50 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 
 		currentSub = null;
 
-		((Button) findViewById(R.id.saveEditSite)).setOnClickListener(new OnClickListener() {
-
-			@Override
-			public void onClick(View v) {
-				String name = ((TextView) findViewById(R.id.editsite_name)).getText().toString();
-				String url = getURL();
-				Boolean enabled = ((CheckBox) findViewById(R.id.enabled)).isChecked();
-				Boolean priority = ((CheckBox) findViewById(R.id.priority)).isChecked();
-				CheckBox newestFirst = ((CheckBox) findViewById(R.id.fifoLifo));
-				Spinner spinner = (Spinner) findViewById(R.id.subMax);
-				int max = mValues[spinner.getSelectedItemPosition()];
-				OrderingPreference orderingPreference = OrderingPreference.FIFO;
-				if (!newestFirst.isChecked()) {
-					orderingPreference = OrderingPreference.LIFO;
-				}
-
-				// try out the url:
-				if (!Util.isValidURL(url)) {
-					Util.toast(SubscriptionEdit.this, "URL to site is malformed.");
-					return;
-				} // endif
-
-				ExternalMediaStatus status = ExternalMediaStatus.getExternalMediaStatus();
-				if (status != ExternalMediaStatus.writeable) {
-					// unable to access sdcard
-					Toast.makeText(getApplicationContext(), "Unable to add subscription to sdcard", Toast.LENGTH_LONG);
-					return;
-				}
-
-				Subscription newSub = new Subscription(name, url, max, orderingPreference, enabled, priority);
-				if (currentSub != null) {
-					// edit:
-					contentService.editSubscription(currentSub, newSub);
-
-				} else {
-					// add:
-					contentService.addSubscription(newSub);
-				} // endif
-
-				SubscriptionEdit.this.setResult(RESULT_OK);
-				SubscriptionEdit.this.finish();
+		findViewById(R.id.saveEditSite).setOnClickListener(v -> {
+			String name = ((TextView) findViewById(R.id.editsite_name)).getText().toString();
+			String url = getURL();
+			Boolean enabled = ((CheckBox) findViewById(R.id.enabled)).isChecked();
+			Boolean priority = ((CheckBox) findViewById(R.id.priority)).isChecked();
+			CheckBox newestFirst = findViewById(R.id.fifoLifo);
+			Spinner spinner = findViewById(R.id.subMax);
+			int max = mValues[spinner.getSelectedItemPosition()];
+			OrderingPreference orderingPreference = OrderingPreference.FIFO;
+			if (!newestFirst.isChecked()) {
+				orderingPreference = OrderingPreference.LIFO;
 			}
 
-		});
+			// try out the url:
+			if (!Util.isValidURL(url)) {
+				Util.toast(SubscriptionEdit.this, "URL to site is malformed.");
+				return;
+			} // endif
 
-		((Button) findViewById(R.id.testEditSite)).setOnClickListener(new OnClickListener() {
-
-			@Override
-			public void onClick(View v) {
-				testUrl();
+			ExternalMediaStatus status = ExternalMediaStatus.getExternalMediaStatus();
+			if (status != ExternalMediaStatus.writeable) {
+				// unable to access sdcard
+				Toast.makeText(getApplicationContext(), "Unable to add subscription to sdcard", Toast.LENGTH_LONG).show();
+				return;
 			}
 
+			Subscription newSub = new Subscription(name, url, max, orderingPreference, enabled, priority);
+			if (currentSub != null) {
+				// edit:
+				contentService.editSubscription(currentSub, newSub);
 
+			} else {
+				// add:
+				contentService.addSubscription(newSub);
+			} // endif
+
+			SubscriptionEdit.this.setResult(RESULT_OK);
+			SubscriptionEdit.this.finish();
 		});
 
-		Spinner s1 = (Spinner) findViewById(R.id.subMax);
-		ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, mStrings);
+		findViewById(R.id.testEditSite).setOnClickListener(v -> testUrl());
+
+		Spinner s1 = findViewById(R.id.subMax);
+		ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, mStrings);
 		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
 		s1.setAdapter(adapter);
 		if (currentSub != null) {
@@ -144,14 +131,14 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 	
 	private void testUrl() {
 		DownloadHistory history = new DownloadHistory(getApplicationContext());
-		encloseureHandler = new EnclosureHandler(history);
-		Spinner spinner = (Spinner) findViewById(R.id.subMax);
+		enclosureHandler = new EnclosureHandler(history);
+		Spinner spinner = findViewById(R.id.subMax);
 		int max = mValues[spinner.getSelectedItemPosition()];
 		if (max == Subscription.GLOBAL) {
             Config config = new Config(getApplicationContext());
 			max = config.getMax();
 		}
-		encloseureHandler.setMax(max);
+		enclosureHandler.setMax(max);
 
 		dialog = ProgressDialog.show(SubscriptionEdit.this, "Testing Subscription", "Testing Subscription URL.\nPlease wait...",
 				true);
@@ -165,13 +152,13 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 	private static final String[] mStrings = { "global setting", "2", "4", "6", "10", "Unlimited" };
 	private static final int[] mValues = { Subscription.GLOBAL, 2, 4, 6, 10, EnclosureHandler.UNLIMITED };
 
-	EnclosureHandler encloseureHandler;
+	private EnclosureHandler enclosureHandler;
 
 	@Override
 	public void run() {
 		testException = null;
 		try {
-			Util.findAvailablePodcasts(getURL(), encloseureHandler);
+			Util.findAvailablePodcasts(getURL(), enclosureHandler);
 		} catch (Exception e) {
 			testException = e;
 		}
@@ -192,25 +179,25 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 
 	Exception testException;
 
-	private Handler handler = new Handler() {
+	private final Handler handler = new Handler() {
 		@Override
 		public void handleMessage(Message msg) {
 			dialog.dismiss();
 			if (testException != null) {
 				Log.e("editSite", "testURL " + getURL(), testException);
 				Util.toast(SubscriptionEdit.this, "Problem accessing feed. " + testException.toString());
-				TextView urlTV = (TextView) findViewById(R.id.editsite_url);
+				TextView urlTV = findViewById(R.id.editsite_url);
 				urlTV.requestFocus();
 				return;
 			}
-			Util.toast(SubscriptionEdit.this, "Feed is OK.  Would download " + encloseureHandler.metaNets.size() + " podcasts.");
+			Util.toast(SubscriptionEdit.this, "Feed is OK.  Would download " + enclosureHandler.metaNets.size() + " podcasts.");
 
-			TextView nameTV = ((TextView) findViewById(R.id.editsite_name));
-			if (encloseureHandler.title.length() != 0 && nameTV.getText().length() == 0) {
-				nameTV.setText(encloseureHandler.getTitle());
+			TextView nameTV = findViewById(R.id.editsite_name);
+			if (enclosureHandler.title.length() != 0 && nameTV.getText().length() == 0) {
+				nameTV.setText(enclosureHandler.getTitle());
 			}
 			
-			((Button) findViewById(R.id.saveEditSite)).requestFocus();
+			findViewById(R.id.saveEditSite).requestFocus();
 
 		}
 	};

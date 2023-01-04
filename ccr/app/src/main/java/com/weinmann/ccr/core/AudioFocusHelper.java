@@ -20,7 +20,7 @@ import android.content.Context;
 import android.media.AudioManager;
 
 /***
- * This Class lifed whole from the Randmom Music Player project, google example
+ * This Class lifted whole from the Random Music Player project, google example
  */
 
 /** 
@@ -32,8 +32,8 @@ import android.media.AudioManager;
  * available on previous SDK's.
  */
 public class AudioFocusHelper implements AudioManager.OnAudioFocusChangeListener {
-    AudioManager mAM;
-    MusicFocusable mFocusable;
+    final AudioManager mAM;
+    final MusicFocusable mFocusable;
 
     public AudioFocusHelper(Context ctx, MusicFocusable focusable) {
         mAM = (AudioManager) ctx.getSystemService(Context.AUDIO_SERVICE);

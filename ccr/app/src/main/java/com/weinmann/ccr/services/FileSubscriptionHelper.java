@@ -20,7 +20,7 @@ import com.weinmann.ccr.core.OrderingPreference;
 import com.weinmann.ccr.core.Subscription;
 import com.weinmann.ccr.core.Util;
 
-public class FileSubscriptionHelper implements SubscriptionHelper {
+public class FileSubscriptionHelper {
 
     private static final String CONCAT_DIVIDER = "\\;";
     private static final String REGEX_DIVIDER = "\\\\;";
@@ -32,8 +32,7 @@ public class FileSubscriptionHelper implements SubscriptionHelper {
         this.legacyFile = legacyFile;
     }
 
-    @Override
-    public boolean addSubscription(Subscription toAdd) {    	
+    public boolean addSubscription(Subscription toAdd) {
         List<Subscription> subs = getSubscriptions();
 
         if (containsSubscriptionURL(subs, toAdd.url)) {
@@ -75,7 +74,7 @@ public class FileSubscriptionHelper implements SubscriptionHelper {
      * @param props the properties to scan
      */
     List<Subscription> convertProperties(Properties props) {
-        List<Subscription> subscriptions = new ArrayList<Subscription>();
+        List<Subscription> subscriptions = new ArrayList<>();
 
         Set<Object> keys = props.keySet();
         for (Object key : keys) {
@@ -97,10 +96,10 @@ public class FileSubscriptionHelper implements SubscriptionHelper {
 	        // best case, we should have all properties:
 	        try {
 	            String name = split[0];
-	            int maxCount = Integer.valueOf(split[1]);
+	            int maxCount = Integer.parseInt(split[1]);
 	            OrderingPreference pref = OrderingPreference.valueOf(split[2]);
-	            boolean enabled = Boolean.valueOf(split[3]);
-	            boolean priority = Boolean.valueOf(split[4]);
+	            boolean enabled = Boolean.parseBoolean(split[3]);
+	            boolean priority = Boolean.parseBoolean(split[4]);
 	            return new Subscription(name, url, maxCount, pref, enabled, priority);
 	
 	        } catch (Exception ex) {
@@ -110,9 +109,9 @@ public class FileSubscriptionHelper implements SubscriptionHelper {
 	        // next best case, we should have everything except priority (default to false)
 	        try {
 	            String name = split[0];
-	            int maxCount = Integer.valueOf(split[1]);
+	            int maxCount = Integer.parseInt(split[1]);
 	            OrderingPreference pref = OrderingPreference.valueOf(split[2]);
-	            boolean enabled = Boolean.valueOf(split[3]);
+	            boolean enabled = Boolean.parseBoolean(split[3]);
 	            return new Subscription(name, url, maxCount, pref, enabled, false);
 	
 	        } catch (Exception ex) {
@@ -122,7 +121,7 @@ public class FileSubscriptionHelper implements SubscriptionHelper {
 	        // third best case, we have all properties except enabled:
 	        try {
 	            String name = split[0];
-	            int maxCount = Integer.valueOf(split[1]);
+	            int maxCount = Integer.parseInt(split[1]);
 	            OrderingPreference pref = OrderingPreference.valueOf(split[2]);
 	            return new Subscription(name, url, maxCount, pref);
 	
@@ -141,13 +140,13 @@ public class FileSubscriptionHelper implements SubscriptionHelper {
         return null;
     }
 
-    @Override
+
     public void deleteAllSubscriptions() {
         List<Subscription> emptyList = Collections.emptyList();
         saveSubscriptions(emptyList);
     }
 
-    @Override
+
     public boolean editSubscription(Subscription original, Subscription updated) {
         List<Subscription> subs = getSubscriptions();
         int idx = indexOfSubscriptionURL(subs, original.url);
@@ -174,7 +173,7 @@ public class FileSubscriptionHelper implements SubscriptionHelper {
         }
     }
 
-    @Override
+
     public List<Subscription> getSubscriptions() {
         if (legacyFile.exists()) {
             // we need to convert to the new format first:
@@ -224,7 +223,7 @@ public class FileSubscriptionHelper implements SubscriptionHelper {
     }
 
     List<Subscription> readLegacySites(InputStream input) throws IOException {
-        List<Subscription> sites = new ArrayList<Subscription>();
+        List<Subscription> sites = new ArrayList<>();
         DataInputStream dis = new DataInputStream(input);
         String line = null;
         while ((line = dis.readLine()) != null) {
@@ -234,19 +233,15 @@ public class FileSubscriptionHelper implements SubscriptionHelper {
                 String url = line.substring(eq + 1);
                 if (Util.isValidURL(url)) {
                     sites.add(new Subscription(name, url));
-                } else {
-                    // TraceUtil.report(new RuntimeException("invalid URL in line: '" + line + "'; URL was: " + url));
                 } // endif
 
-            } else {
-                // TraceUtil.report(new RuntimeException("missing equals in line: " + line));
             }
         }
 
         return sites;
     }
 
-    @Override
+
     public boolean removeSubscription(Subscription toRemove) {
         List<Subscription> subs = getSubscriptions();
         int idx = indexOfSubscriptionURL(subs, toRemove.url);
@@ -259,7 +254,7 @@ public class FileSubscriptionHelper implements SubscriptionHelper {
         return false;
     }
 
-    @Override
+
     public boolean toggleSubscription(Subscription toToggle) {
         List<Subscription> subs = getSubscriptions();
         int idx = indexOfSubscriptionURL(subs, toToggle.url);
@@ -273,9 +268,9 @@ public class FileSubscriptionHelper implements SubscriptionHelper {
         return false;
     }
     
-    @Override
+
     public List<Subscription> resetToDemoSubscriptions() {
-        List<Subscription> subs = new ArrayList<Subscription>();
+        List<Subscription> subs = new ArrayList<>();
         subs.add(new Subscription("Clark Howard", "https://feeds.megaphone.fm/clarkhoward"));
         saveSubscriptions(subs);
         return subs;

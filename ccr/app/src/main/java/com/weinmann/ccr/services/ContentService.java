@@ -11,7 +11,6 @@ import android.media.MediaPlayer;
 import android.media.PlaybackParams;
 import android.net.wifi.WifiManager;
 import android.os.Binder;
-import android.os.Bundle;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
@@ -19,7 +18,6 @@ import android.preference.PreferenceManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
-import android.view.KeyEvent;
 
 import com.weinmann.ccr.R;
 import com.weinmann.ccr.core.AudioFocusHelper;
@@ -49,8 +47,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     MetaHolder metaHolder;
     SearchHelper searchHelper;
 
-
-    private PlayStatusListener playStatusListener;
     private Config config;
     FileSubscriptionHelper subHelper;
 
@@ -77,7 +73,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     // If not available, this will be null. Always check for null before using!
     AudioFocusHelper mAudioFocusHelper = null;
 
-    public void setApplicationContext(Context context) {
+    public void resetMediaPlayer() {
         try {
             if (mediaPlayer == null) {
                 mediaPlayer = new MediaPlayer();
@@ -161,7 +157,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         return meta == null ? null : meta.file;
     }
 
-    int currentPostion() {
+    int currentPosition() {
         if (currentPodcastInPlayer >= metaHolder.getSize()) {
             return 0;
         }
@@ -173,7 +169,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             int duration = currentDuration();
             if (duration == 0)
                 return 0;
-            return currentPostion() * 100 / duration;
+            return currentPosition() * 100 / duration;
         }
         if (mediaPlayer.getDuration() == 0) {
             return 0;
@@ -261,7 +257,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
 
         SharedPreferences app_preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        if (got == 0 && !app_preferences.getBoolean("notifiyOnZeroDownloads", true)) {
+        if (got == 0 && !app_preferences.getBoolean("notifyOnZeroDownloads", true)) {
             mNotificationHelper.cancel(NotificationHelper.DOWNLOAD_NOTIFICATION_ID);
         } else {
 
@@ -476,7 +472,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
                 super.onCallStateChanged(state, incomingNumber);
 
                 if (state == TelephonyManager.CALL_STATE_OFFHOOK || state == TelephonyManager.CALL_STATE_RINGING) {
-                    // It's possible that this listener is registered before the setApplicationContext
+                    // It's possible that this listener is registered before the resetMediaPlayer
                     // method is called, which establishes the MediaPlayer instance.
                     if (mediaPlayer != null && mediaPlayer.isPlaying()) {
                         mPauseReason = PauseReason.PhoneCall;
@@ -530,73 +526,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     public void resetPodcastDir() {
         metaHolder = new MetaHolder(getApplicationContext());
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        int not_sticky = Service.START_NOT_STICKY;
-        Log.i("CarCastResurrected", "ContentService.onStartCommand()");
-
-        if (intent.getAction().equals(Intent.ACTION_MEDIA_BUTTON)) {
-            KeyEvent keyEvent = (KeyEvent) intent.getExtras().get(Intent.EXTRA_KEY_EVENT);
-
-            switch (keyEvent.getKeyCode()) {
-                case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-                    pauseOrPlay();
-                    break;
-                case KeyEvent.KEYCODE_MEDIA_PLAY:
-                    if (!isPlaying()) {
-                        play();
-                    }
-                    break;
-                case KeyEvent.KEYCODE_MEDIA_PAUSE:
-                case KeyEvent.KEYCODE_MEDIA_STOP:
-                    pauseNow();
-                    break;
-                case KeyEvent.KEYCODE_MEDIA_NEXT:
-                    bumpForwardSeconds(30);
-                    break;
-                case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
-                    bumpForwardSeconds(-30);
-                    break;
-            }
-            return not_sticky;
-        }
-
-        if (intent.getAction().equals(AudioManager.ACTION_AUDIO_BECOMING_NOISY)) {
-            // if unplugged
-            if (intent.getIntExtra("state", 0) == 0 && isPlaying()) {
-                pauseNow();
-                bumpForwardSeconds(-2);
-                if (playStatusListener != null) {
-                    playStatusListener.playStateUpdated(false);
-                }
-
-            }
-            return not_sticky;
-        }
-
-        Bundle extras = intent.getExtras();
-        String external = extras.getString("external");
-
-        if (external == null)
-            return not_sticky;
-
-        Log.i("CarCastResurrected", "ContentService got intent with external extra:" + external);
-
-        if (mediaPlayer == null)
-            setApplicationContext(getApplicationContext());
-
-        if (external.equals(ExternalReceiver.PAUSE))
-            pauseNow();
-
-        if (external.equals(ExternalReceiver.PLAY) && !isPlaying())
-            play();
-
-        if (external.equals(ExternalReceiver.PAUSEPLAY))
-            pauseOrPlay();
-
-        return not_sticky;
     }
 
 
@@ -796,9 +725,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
                         Log.i("CarCastResurrected", "Locked Wifi.");
                     }
 
-                    String accounts = PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).getString("accounts",
-                            "none");
-
                     downloadHelper.downloadNewPodCasts(ContentService.this);
                 } finally {
                     if (wifiLock != null) {
@@ -813,7 +739,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
                     wl.release();
                 }
             } catch (Throwable t) {
-                Log.i("CarCastResurrected", "Unpleasentness during download: " + t.getMessage());
+                Log.i("CarCastResurrected", "Unpleasantness during download: " + t.getMessage());
             } finally {
                 Log.i("CarCastResurrected", "finished download thread.");
                 partialWakeLock.release();
@@ -894,10 +820,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         return downloadHelper.sb.toString();
     }
 
-    public void setPlayStatusListener(PlayStatusListener playStatusListener) {
-        this.playStatusListener = playStatusListener;
-    }
-
     public void newContentAdded() {
         metaHolder = new MetaHolder(getApplicationContext(), currentFile());
     }
@@ -917,17 +839,14 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     private Method mSetForeground;
     private Method mStartForeground;
     private Method mStopForeground;
-    private Object[] mSetForegroundArgs = new Object[1];
-    private Object[] mStartForegroundArgs = new Object[2];
-    private Object[] mStopForegroundArgs = new Object[1];
+    private final Object[] mSetForegroundArgs = new Object[1];
+    private final Object[] mStartForegroundArgs = new Object[2];
+    private final Object[] mStopForegroundArgs = new Object[1];
 
     void invokeMethod(Method method, Object[] args) {
         try {
-            mStartForeground.invoke(this, mStartForegroundArgs);
-        } catch (InvocationTargetException e) {
-            // Should not happen.
-            Log.w("CarCastResurrected-ContentService", "Unable to invoke method", e);
-        } catch (IllegalAccessException e) {
+            method.invoke(this, args);
+        } catch (InvocationTargetException | IllegalAccessException e) {
             // Should not happen.
             Log.w("CarCastResurrected-ContentService", "Unable to invoke method", e);
         }
@@ -939,7 +858,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     void startForegroundCompat(int id, Notification notification) {
         // If we have the new startForeground API, then use it.
         if (mStartForeground != null) {
-            mStartForegroundArgs[0] = Integer.valueOf(id);
+            mStartForegroundArgs[0] = id;
             mStartForegroundArgs[1] = notification;
             invokeMethod(mStartForeground, mStartForegroundArgs);
             return;
@@ -959,10 +878,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             mStopForegroundArgs[0] = Boolean.TRUE;
             try {
                 mStopForeground.invoke(this, mStopForegroundArgs);
-            } catch (InvocationTargetException e) {
-                // Should not happen.
-                Log.w("CarCastResurrected-ContentService", "Unable to invoke stopForeground", e);
-            } catch (IllegalAccessException e) {
+            } catch (InvocationTargetException | IllegalAccessException e) {
                 // Should not happen.
                 Log.w("CarCastResurrected-ContentService", "Unable to invoke stopForeground", e);
             }
@@ -990,7 +906,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
         startForegroundCompat(R.string.notification_status, notification);
 
-        partialWakeLock.acquire();
+        partialWakeLock.acquire(60*1000L /*1 minute*/);
 
     }
 

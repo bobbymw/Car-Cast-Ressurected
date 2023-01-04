@@ -8,7 +8,7 @@ import java.net.URLEncoder;
 public class SearchHelper extends Thread {
 	boolean done;
 	String results = "";
-	String search;
+	final String search;
 
 	public SearchHelper(String search) {
 		this.search = search;

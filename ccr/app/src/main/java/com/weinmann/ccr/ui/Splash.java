@@ -17,13 +17,8 @@ public class Splash extends Activity {
           
           setTitle(CarCastResurrectedApplication.getAppTitle()+"");
           
-          ImageView imageView = (ImageView)findViewById(R.id.splashscreen);
-          imageView.setOnClickListener(new OnClickListener(){
-
-			@Override
-			public void onClick(View v) {
-				finish();				
-			}});
+          ImageView imageView = findViewById(R.id.splashscreen);
+          imageView.setOnClickListener(v -> finish());
 	 }
 
 }

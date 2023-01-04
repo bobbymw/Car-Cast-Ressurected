@@ -4,8 +4,8 @@ import android.view.View;
 import android.view.View.OnClickListener;
 
 public class BumpCast implements OnClickListener {
-    CarCastResurrected carCast;
-    boolean direction;
+    final CarCastResurrected carCast;
+    final boolean direction;
 
     public BumpCast(CarCastResurrected carCast, boolean direction) {
         this.carCast = carCast;

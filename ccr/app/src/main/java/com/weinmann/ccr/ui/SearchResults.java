@@ -30,7 +30,7 @@ public class SearchResults extends BaseActivity {
 
 	@SuppressWarnings("unchecked")
     private void add(int position) {
-        ListView listView = (ListView) findViewById(R.id.siteList);
+        ListView listView = findViewById(R.id.siteList);
         Map<String, String> rowData = (Map<String, String>) listView.getAdapter().getItem(position);
 
         String name = rowData.get("name");
@@ -49,7 +49,7 @@ public class SearchResults extends BaseActivity {
 	}
 
 	private List<Subscription> getResults() {
-		List<Subscription> res = new ArrayList<Subscription>();
+		List<Subscription> res = new ArrayList<>();
 		try {
 			lastResults = contentService.startSearch("-results-");
 			String[] lines = lastResults.split("\\n");
@@ -86,7 +86,7 @@ public class SearchResults extends BaseActivity {
 		AdapterContextMenuInfo info = (AdapterContextMenuInfo) item
 				.getMenuInfo();
 		if (item.getTitle().equals("Subscribe")) {
-		    add(info.position);
+			add(info.position);
 			return false;
 		}
 		return true;
@@ -99,16 +99,9 @@ public class SearchResults extends BaseActivity {
 
 		setTitle(CarCastResurrectedApplication.getAppTitle()+": subscription search results");
 
-		ListView listView = (ListView) findViewById(R.id.siteList);
+		ListView listView = findViewById(R.id.siteList);
 
-		listView.setOnItemClickListener(new OnItemClickListener() {
-
-			@Override
-			public void onItemClick(AdapterView<?> arg0, View arg1,
-					int position, long arg3) {
-				add(position);
-			}
-		});
+		listView.setOnItemClickListener((arg0, arg1, position, arg3) -> add(position));
 		registerForContextMenu(listView);
 	}
 
@@ -139,7 +132,7 @@ public class SearchResults extends BaseActivity {
 	protected void showResults() {
 
 		try {
-			ListView listView = (ListView) findViewById(R.id.siteList);
+			ListView listView = findViewById(R.id.siteList);
 
 			List<Subscription> sites = getResults();
 
@@ -147,10 +140,10 @@ public class SearchResults extends BaseActivity {
 					"Found " + sites.size() + " results", Toast.LENGTH_LONG)
 					.show();
 
-			List<Map<String, String>> list = new ArrayList<Map<String, String>>();
+			List<Map<String, String>> list = new ArrayList<>();
 
 			for (Subscription sub: sites) {
-				Map<String, String> item = new HashMap<String, String>();
+				Map<String, String> item = new HashMap<>();
 				item.put("name", sub.name);
 				item.put("url", sub.url);
 				list.add(item);

@@ -6,7 +6,7 @@ import java.util.Properties;
 /** Meta information about a podcast.  Loosely defined so things can be added later (like time) */
 public class MetaNet {
 
-	 Properties properties = new Properties();
+	final Properties properties = new Properties();
 
 	public MetaNet(String feedName, URL url, int size, String mimetype, Boolean priority) {	
 		properties.setProperty("feedName", feedName);
@@ -32,10 +32,6 @@ public class MetaNet {
 		return properties.getProperty("title");
 	}
 
-	public String getDescription() {
-		return properties.getProperty("description");
-	}
-
 	public Boolean getPriority() {
 		return Boolean.parseBoolean(properties.getProperty("priority"));
 	}
@@ -51,10 +47,6 @@ public class MetaNet {
 
 	public void setDescription(String value) {
 		properties.setProperty("description", value);		
-	}
-
-	public void setMimetype(String value) {
-		properties.setProperty("mimetype", value);
 	}
 
 	public String getMimetype() {

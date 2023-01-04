@@ -42,7 +42,7 @@ public class AlarmService extends Service {
     /**
      * The function that runs in our worker thread
      */
-    Runnable task = new Runnable() {
+    final Runnable task = new Runnable() {
         @Override public void run() {
 
         	try {

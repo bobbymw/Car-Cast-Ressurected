@@ -11,7 +11,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
+import android.annotation.SuppressLint;
 import android.util.Log;
 
 import com.weinmann.ccr.core.CarCastResurrectedApplication;
@@ -24,7 +26,7 @@ import com.weinmann.ccr.core.Util;
 public class DownloadHelper implements Sayer {
     private String currentSubscription = " ";
     private String currentTitle = " ";
-    private int globalMax;
+    private final int globalMax;
     private int podcastsCurrentBytes;
     private int podcastsDownloaded;
     private int podcastsTotalBytes;
@@ -42,7 +44,7 @@ public class DownloadHelper implements Sayer {
         return isRunning;
     }
 
-	SimpleDateFormat sdf = new SimpleDateFormat("MMM-dd hh:mma");
+    private final SimpleDateFormat sdf = new SimpleDateFormat("MMM-dd hh:mma", Locale.US);
 
 	private String getLocalFileExtFromMimetype(String mimetype) {
 		if ("audio/mp3".equals(mimetype)) {
@@ -54,7 +56,8 @@ public class DownloadHelper implements Sayer {
 		return ".bin";
 	}
 
-	protected void downloadNewPodCasts(ContentService contentService) {
+	@SuppressLint("DefaultLocale")
+    protected void downloadNewPodCasts(ContentService contentService) {
         try {
             DownloadHistory history = new DownloadHistory(contentService);
 
@@ -68,28 +71,27 @@ public class DownloadHelper implements Sayer {
 
             say("History of downloads contains " + history.size() + " podcasts.");
 
-            List<MetaNet> enclosures = new ArrayList<MetaNet>();
+            List<MetaNet> enclosures = new ArrayList<>();
 
             for (Subscription sub : sites) {
-                EnclosureHandler encloseureHandler = new EnclosureHandler(history, sub.priority);
+                EnclosureHandler enclosureHandler = new EnclosureHandler(history, sub.priority);
 
                 if (sub.enabled) {
                     try {
                         say("\nScanning subscription/feed: " + sub.url);
-                        URL url = new URL(sub.url);
-                        int foundStart = encloseureHandler.metaNets.size();
+                        int foundStart = enclosureHandler.metaNets.size();
                         if (sub.maxDownloads == Subscription.GLOBAL)
-                            encloseureHandler.setMax(globalMax);
+                            enclosureHandler.setMax(globalMax);
                         else
-                            encloseureHandler.setMax(sub.maxDownloads);
+                            enclosureHandler.setMax(sub.maxDownloads);
 
                         String name = sub.name;
-                        encloseureHandler.setFeedName(name);
+                        enclosureHandler.setFeedName(name);
 
-                        Util.findAvailablePodcasts(sub.url, encloseureHandler);
+                        Util.findAvailablePodcasts(sub.url, enclosureHandler);
 
                         String message = sitesScanned + "/" + sites.size() + ": " + name + ", "
-                                + (encloseureHandler.metaNets.size() - foundStart) + " new";
+                                + (enclosureHandler.metaNets.size() - foundStart) + " new";
                         say(message);
                         contentService.updateNotification(message);
 
@@ -105,15 +107,15 @@ public class DownloadHelper implements Sayer {
                 sitesScanned++;
 
                 if (sub.orderingPreference == OrderingPreference.LIFO)
-                    Collections.reverse(encloseureHandler.metaNets);
+                    Collections.reverse(enclosureHandler.metaNets);
 
-                enclosures.addAll(encloseureHandler.metaNets);
+                enclosures.addAll(enclosureHandler.metaNets);
 
             } // endforeach
 
             say("\nTotal enclosures " + enclosures.size());
 
-            List<MetaNet> newPodcasts = new ArrayList<MetaNet>();
+            List<MetaNet> newPodcasts = new ArrayList<>();
             for (MetaNet metaNet : enclosures) {
                 if (history.contains(metaNet))
                     continue;
@@ -176,11 +178,11 @@ public class DownloadHelper implements Sayer {
                     say("enclosure url: " + new URL(newPodcasts.get(i).getUrl()));
                     InputStream is = getInputStream(new URL(newPodcasts.get(i).getUrl()));
                     FileOutputStream fos = new FileOutputStream(tempFile);
-                    int amt = 0;
+                    int amt;
                     int expectedSizeKilo = newPodcasts.get(i).getSize() / 1024;
                     String preDownload = sb.toString();
                     int totalForThisPodcast = 0;
-                    say(String.format("%dk/%dk 0", totalForThisPodcast / 1024, expectedSizeKilo) + "%\n");
+                    say(String.format("%dk/%dk 0", 0, expectedSizeKilo) + "%\n");
                     while ((amt = is.read(buf)) >= 0) {
                         fos.write(buf, 0, amt);
                         podcastsCurrentBytes += amt;
@@ -201,7 +203,7 @@ public class DownloadHelper implements Sayer {
 
                     got++;
                     if (totalForThisPodcast != newPodcasts.get(i).getSize()) {
-                        say("Note: reported size (in feed) doesnt match actual size (downloaded file)");
+                        say("Note: reported size (in feed) doesn't match actual size (downloaded file)");
                         // subtract out wrong value
                         podcastsTotalBytes -= newPodcasts.get(i).getSize();
                         // add in correct value
@@ -243,14 +245,14 @@ public class DownloadHelper implements Sayer {
 				return getInputStream(new URL(newURL));
 			}
 			if (con.getResponseCode() > 300 && con.getResponseCode() > 399) {
-				say(url + " gave resposneCode " + con.getResponseCode());
+				say(url + " gave responseCode " + con.getResponseCode());
 				throw new IOException();
 			}
 			url = null;
 			for (int i = 0; i < 50; i++) {
 				if (con.getHeaderFieldKey(i) == null)
 					continue;
-				if (con.getHeaderFieldKey(i).toLowerCase().equals("location")) {
+				if (con.getHeaderFieldKey(i).equalsIgnoreCase("location")) {
 					url = new URL(con.getHeaderField(i));
 				}
 			}

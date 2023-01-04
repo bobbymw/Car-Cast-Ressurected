@@ -17,32 +17,20 @@ import com.weinmann.ccr.core.Subscription;
 
 public class OpmlImport extends BaseActivity {
 
-	boolean replaceAllonImport = true;
-	Uri feedFile;
+	private boolean replaceAllOnImport = true;
+	private Uri feedFile;
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.oiml_import);
 
-		final Button replaceAll = (Button) findViewById(R.id.replaceAll);
-		final Button addToButton = (Button) findViewById(R.id.addToSubscription);
-		replaceAll.setOnClickListener(new OnClickListener() {
-			@Override
-			public void onClick(View v) {
-//				replaceAll.setEnabled(false);
-//				addToButton.setEnabled(false);
-				importOpml();
-			}
-		});
-		addToButton.setOnClickListener(new OnClickListener() {
-			@Override
-			public void onClick(View v) {
-//				replaceAll.setEnabled(false);
-//				addToButton.setEnabled(false);
-				replaceAllonImport = false;
-				importOpml();
-			}
+		final Button replaceAll = findViewById(R.id.replaceAll);
+		final Button addToButton = findViewById(R.id.addToSubscription);
+		replaceAll.setOnClickListener(v -> importOpml());
+		addToButton.setOnClickListener(v -> {
+			replaceAllOnImport = false;
+			importOpml();
 		});
 
 		feedFile = getIntent().getData();
@@ -50,7 +38,7 @@ public class OpmlImport extends BaseActivity {
 	}
 
 	void importOpml() {
-		if(replaceAllonImport){
+		if(replaceAllOnImport){
 			contentService.deleteAllSubscriptions();
 		}
 		InputStream in = null;
@@ -67,7 +55,6 @@ public class OpmlImport extends BaseActivity {
 					if(parser.getName().equals("outline")){
 						String title = parser.getAttributeValue(null, "title");
 						String xmlUrl = parser.getAttributeValue(null, "xmlUrl");
-						//Log.i("com.weinmann.ccr.oiml", "title="+title+"  xmlUrl="+xmlUrl);
 						if(contentService.addSubscription(new Subscription(title, xmlUrl)))
 							count++;
 					}

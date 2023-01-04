@@ -21,7 +21,7 @@ import com.weinmann.ccr.services.EnclosureHandler;
 public class Util {
 
 	// shared with SubscriptionEdit
-	public static void findAvailablePodcasts(String url, EnclosureHandler encloseureHandler) throws Exception {
+	public static void findAvailablePodcasts(String url, EnclosureHandler enclosureHandler) throws Exception {
 		Log.i("CarCastResurrected", "Processing URL: " + url);
 		SAXParser sp = saxParserFactory.newSAXParser();
 		URLConnection connection = openConnection(url);
@@ -43,10 +43,10 @@ public class Util {
 		}
 		pis.unread(bytes, 0, i + 1);
 		Log.i("CarCastResurrected/Util", "xml start:" + xmlHeader);
-		if (xmlHeader.toString().toLowerCase().indexOf("windows-1252") != -1) {
+		if (xmlHeader.toString().toLowerCase().contains("windows-1252")) {
 			charset = "ISO-8859-1";
 		}
-		if (xmlHeader.toString().toLowerCase().indexOf("iso-8859-1") != -1) {
+		if (xmlHeader.toString().toLowerCase().contains("iso-8859-1")) {
 			charset = "ISO-8859-1";
 		}
 
@@ -55,7 +55,7 @@ public class Util {
 		is.setEncoding(charset);
 
 		try {
-			sp.parse(is, encloseureHandler);
+			sp.parse(is, enclosureHandler);
 		} catch(Exception pf){
 			if (charset.equals("UTF-8"))
 				throw pf;
@@ -64,7 +64,7 @@ public class Util {
 			connection = openConnection(url);
 			is = new InputSource(connection.getInputStream());
 			is.setEncoding("UTF-8");
-			sp.parse(is, encloseureHandler);
+			sp.parse(is, enclosureHandler);
 		}
 	}
 

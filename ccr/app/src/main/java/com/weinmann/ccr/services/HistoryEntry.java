@@ -5,8 +5,8 @@ import java.io.Serializable;
 @SuppressWarnings("serial")
 public class HistoryEntry implements Serializable {
 
-	String subscription;
-	String podcastURL;
+	final String subscription;
+	final String podcastURL;
 
 	public HistoryEntry(String subscription, String podcastURL) {
 		super();

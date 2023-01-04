@@ -25,11 +25,11 @@ public class EnclosureHandler extends DefaultHandler {
 
 	String feedName;
 	private boolean grabTitle;
-	DownloadHistory history;
+	private final DownloadHistory history;
 
 	public int max = 2;
 
-	public List<MetaNet> metaNets = new ArrayList<MetaNet>();
+	public final List<MetaNet> metaNets = new ArrayList<>();
 
 	private boolean needTitle = true;
 	private boolean startTitle;
@@ -39,15 +39,11 @@ public class EnclosureHandler extends DefaultHandler {
 	private boolean startDescription = false;
 	private String lastDescription = "";
 
-        private boolean priority = false;
-
-        public void setPriority(Boolean priority) {
-           this.priority = priority;
-        }
+	private boolean priority = false;
 
 	public EnclosureHandler(DownloadHistory history, Boolean priority) {
 		this.history = history;
-                this.priority = priority;
+		this.priority = priority;
 	}
 
 	public EnclosureHandler(DownloadHistory history) {
@@ -99,17 +95,15 @@ public class EnclosureHandler extends DefaultHandler {
 			return true;
 		if (url.toLowerCase().endsWith(".ogg"))
 			return true;
-		if (url.indexOf(".mp3?") != -1)
+		if (url.contains(".mp3?"))
 			return true;
-		if (url.indexOf(".m4a?") != -1)
+		if (url.contains(".m4a?"))
 			return true;
-		if (url.indexOf(".ogg?") != -1)
+		if (url.contains(".ogg?"))
 			return true;
 		if ("audio/mp3".equals(type))
 			return true;
-		if ("audio/ogg".equals(type))
-			return true;
-		return false;
+		return "audio/ogg".equals(type);
 	}
 	
 	public void setFeedName(String feedName) {
@@ -117,7 +111,7 @@ public class EnclosureHandler extends DefaultHandler {
 	}
 
 	@Override
-	public void startElement(String namespaceURI, String localName, String qName, Attributes atts) throws SAXException {
+	public void startElement(String namespaceURI, String localName, String qName, Attributes attrs) throws SAXException {
 
 		// This grabs the first title and uses it as the feed title
 		if (needTitle && localName.equals("title")) {
@@ -135,13 +129,13 @@ public class EnclosureHandler extends DefaultHandler {
 			startDescription = true;
 		}
 
-		if (localName.equals("enclosure") && atts.getValue("url") != null) {			
-			if (!isAudio(atts.getValue("url"), atts.getValue("type"))) {
-				Log.i("content", "Not downloading, url doesn't end right type... " + atts.getValue("url") + ", " + atts.getValue("type"));
+		if (localName.equals("enclosure") && attrs.getValue("url") != null) {
+			if (!isAudio(attrs.getValue("url"), attrs.getValue("type"))) {
+				Log.i("content", "Not downloading, url doesn't end right type... " + attrs.getValue("url") + ", " + attrs.getValue("type"));
 				return;
 			}
 			
-			Log.i("CarCastResurrected", localName + " " + atts.getValue("url") + "; priority=" + priority);
+			Log.i("CarCastResurrected", localName + " " + attrs.getValue("url") + "; priority=" + priority);
 			try {
 				if (max != STOP && (max == UNLIMITED || max > 0)) {
 					if (max > 0)
@@ -154,14 +148,14 @@ public class EnclosureHandler extends DefaultHandler {
 						}
 					}
 					int length = 0;
-					if (atts.getValue("length") != null && atts.getValue("length").length() != 0) {
+					if (attrs.getValue("length") != null && attrs.getValue("length").length() != 0) {
 						try {
-							length = Integer.parseInt(atts.getValue("length").trim());
+							length = Integer.parseInt(attrs.getValue("length").trim());
 						} catch (NumberFormatException nfe) {
 							// some feeds have bad lengths
 						}
 					}
-				    MetaNet metaNet = new MetaNet(feedName, new URL(atts.getValue("url")), length, getMimetype(atts.getValue("url"), atts.getValue("type")), priority);
+				    MetaNet metaNet = new MetaNet(feedName, new URL(attrs.getValue("url")), length, getMimetype(attrs.getValue("url"), attrs.getValue("type")), priority);
 					metaNet.setTitle(lastTitle);
 					metaNet.setDescription(lastDescription);
 					if (history.contains(metaNet)) {
@@ -198,7 +192,7 @@ public class EnclosureHandler extends DefaultHandler {
 			return "audio/mp3";
 		if (url.toLowerCase().endsWith(".ogg"))
 			return "audio/ogg";
-		if (url.indexOf(".mp3?") != -1)
+		if (url.contains(".mp3?"))
 			return "audio/mp3";
 		// best effort
 		if( type != null && !"".equals(type) ) {

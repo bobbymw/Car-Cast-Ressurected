@@ -33,7 +33,7 @@ public class Location {
 	}
 
 
-	public String title;
+	public final String title;
 
 	public Location(String title) {
 		super();

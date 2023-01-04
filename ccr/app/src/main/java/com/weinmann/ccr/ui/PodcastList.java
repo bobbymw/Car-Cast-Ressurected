@@ -39,7 +39,7 @@ import com.weinmann.ccr.services.MetaHolder;
 public class PodcastList extends BaseActivity {
 
 	SimpleAdapter podcastsAdapter;
-	ArrayList<HashMap<String, String>> list = new ArrayList<HashMap<String, String>>();
+	private final ArrayList<HashMap<String, String>> list = new ArrayList<>();
 
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -61,70 +61,50 @@ public class PodcastList extends BaseActivity {
 
 		setTitle(CarCastResurrectedApplication.getAppTitle() + ": Downloaded podcasts");
 
-		Button deleteButton = (Button) findViewById(R.id.delete);
-		deleteButton.setOnClickListener(new OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				new AlertDialog.Builder(PodcastList.this).setIcon(android.R.drawable.ic_dialog_alert)
-						.setMessage("Delete " + checkedItems.size() + " podcasts?")
-						.setPositiveButton("Delete", new DialogInterface.OnClickListener() {
-							@Override
-							public void onClick(DialogInterface dialog, int which) {
-								if (contentService.isPlaying())
-									contentService.pauseNow();
-								while (!checkedItems.isEmpty()) {
-									contentService.deletePodcast(checkedItems.last());
-									checkedItems.remove(checkedItems.last());
-								}
-								podcastsAdapter.notifyDataSetChanged();
-								showPodcasts();
-							}
-						}).setNegativeButton("Cancel", null).show();
-			}
+		Button deleteButton = findViewById(R.id.delete);
+		deleteButton.setOnClickListener(v -> new AlertDialog.Builder(PodcastList.this).setIcon(android.R.drawable.ic_dialog_alert)
+				.setMessage("Delete " + checkedItems.size() + " podcasts?")
+				.setPositiveButton("Delete", (dialog, which) -> {
+					if (contentService.isPlaying())
+						contentService.pauseNow();
+					while (!checkedItems.isEmpty()) {
+						contentService.deletePodcast(checkedItems.last());
+						checkedItems.remove(checkedItems.last());
+					}
+					podcastsAdapter.notifyDataSetChanged();
+					showPodcasts();
+				}).setNegativeButton("Cancel", null).show());
+
+		findViewById(R.id.top).setOnClickListener(v -> {
+			if (contentService.isPlaying())
+				contentService.pauseNow();
+			checkedItems = contentService.moveTop(checkedItems);
+			podcastsAdapter.notifyDataSetChanged();
+			showPodcasts();
 		});
 
-		((Button) findViewById(R.id.top)).setOnClickListener(new OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				if (contentService.isPlaying())
-					contentService.pauseNow();
-				checkedItems = contentService.moveTop(checkedItems);
-				podcastsAdapter.notifyDataSetChanged();
-				showPodcasts();
-			}
+		findViewById(R.id.up).setOnClickListener(v -> {
+			if (contentService.isPlaying())
+				contentService.pauseNow();
+			checkedItems = contentService.moveUp(checkedItems);
+			podcastsAdapter.notifyDataSetChanged();
+			showPodcasts();
 		});
 
-		((Button) findViewById(R.id.up)).setOnClickListener(new OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				if (contentService.isPlaying())
-					contentService.pauseNow();
-				checkedItems = contentService.moveUp(checkedItems);
-				podcastsAdapter.notifyDataSetChanged();
-				showPodcasts();
-			}
+		findViewById(R.id.down).setOnClickListener(v -> {
+			if (contentService.isPlaying())
+				contentService.pauseNow();
+			checkedItems = contentService.moveDown(checkedItems);
+			podcastsAdapter.notifyDataSetChanged();
+			showPodcasts();
 		});
 
-		((Button) findViewById(R.id.down)).setOnClickListener(new OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				if (contentService.isPlaying())
-					contentService.pauseNow();
-				checkedItems = contentService.moveDown(checkedItems);
-				podcastsAdapter.notifyDataSetChanged();
-				showPodcasts();
-			}
-		});
-
-		((Button) findViewById(R.id.bottom)).setOnClickListener(new OnClickListener() {
-			@Override
-			public void onClick(View v) {
-				if (contentService.isPlaying())
-					contentService.pauseNow();
-				checkedItems = contentService.moveBottom(checkedItems);
-				podcastsAdapter.notifyDataSetChanged();
-				showPodcasts();
-			}
+		findViewById(R.id.bottom).setOnClickListener(v -> {
+			if (contentService.isPlaying())
+				contentService.pauseNow();
+			checkedItems = contentService.moveBottom(checkedItems);
+			podcastsAdapter.notifyDataSetChanged();
+			showPodcasts();
 		});
 	}
 
@@ -170,28 +150,20 @@ public class PodcastList extends BaseActivity {
 			// Ask the user if they want to really delete all
 			new AlertDialog.Builder(this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Delete All?")
 					.setMessage("Do you really want to delete all downloaded podcasts?")
-					.setPositiveButton("Confirm Delete All", new DialogInterface.OnClickListener() {
-						@Override
-						public void onClick(DialogInterface dialog, int which) {
-							contentService.purgeAll();
-							list.clear();
-							podcastsAdapter.notifyDataSetChanged();
-							finish();
-						}
-
+					.setPositiveButton("Confirm Delete All", (dialog, which) -> {
+						contentService.purgeAll();
+						list.clear();
+						podcastsAdapter.notifyDataSetChanged();
+						finish();
 					}).setNegativeButton("Cancel", null).show();
 
 			return true;
 		}
 		if (item.getItemId() == R.id.eraseDownloadHistory) {
 			new AlertDialog.Builder(this).setIcon(android.R.drawable.ic_dialog_alert).setMessage("Erase Download History?")
-					.setPositiveButton("Erase", new DialogInterface.OnClickListener() {
-						@Override
-						public void onClick(DialogInterface dialog, int which) {
-							int historyDeleted = new DownloadHistory(getApplicationContext()).eraseHistory();
-							Util.toast(PodcastList.this, "Erased " + historyDeleted + " podcast from dowload history.");
-						}
-
+					.setPositiveButton("Erase", (dialog, which) -> {
+						int historyDeleted = new DownloadHistory(getApplicationContext()).eraseHistory();
+						Util.toast(PodcastList.this, "Erased " + historyDeleted + " podcast from download history.");
 					}).setNegativeButton("Cancel", null).show();
 
 		}
@@ -200,14 +172,14 @@ public class PodcastList extends BaseActivity {
 
 	protected void showPodcasts() {
 
-		ListView listView = (ListView) findViewById(R.id.list);
+		ListView listView = findViewById(R.id.list);
 
 		MetaHolder metaHolder = new MetaHolder(getApplicationContext());
 		list.clear();
 
 		for (int i = 0; i < metaHolder.getSize(); i++) {
 			MetaFile metaFile = metaHolder.get(i);
-			HashMap<String, String> item = new HashMap<String, String>();
+			HashMap<String, String> item = new HashMap<>();
 			if (contentService.currentTitle().equals(metaFile.getTitle())) {
 				if (contentService.isPlaying()) {
 					item.put("line1", "> " + metaFile.getFeedName());
@@ -250,7 +222,7 @@ public class PodcastList extends BaseActivity {
 					} else {
 						view.setBackgroundColor(Color.TRANSPARENT);
 					}
-					final CheckBox checkbox = (CheckBox) view.findViewById(R.id.checkBox1);
+					final CheckBox checkbox = view.findViewById(R.id.checkBox1);
 					checkbox.setOnClickListener(checkBoxClicked);
 					view.setOnClickListener(itemClicked);
 					view.setOnLongClickListener(itemLongClicked);
@@ -260,14 +232,13 @@ public class PodcastList extends BaseActivity {
 						view.setTag(tag = new Tag());
 					}
 					tag.position = position;
-					tag.item = map;
 
 					checkbox.setChecked(checkedItems.contains(position));
 
 					// See if we should try to strip out HTML from the description.
 					String desc = map.get("description");
 					if (desc != null) {
-						TextView description = (TextView) view.findViewById(R.id.description);
+						TextView description = view.findViewById(R.id.description);
 						// Strip the HTML and then go back to a string to drop formatting.
 						description.setText(Html.fromHtml(desc).toString());
 					}
@@ -282,84 +253,74 @@ public class PodcastList extends BaseActivity {
 
 	}
 
-	SortedSet<Integer> checkedItems = new TreeSet<Integer>();
+	SortedSet<Integer> checkedItems = new TreeSet<>();
 
-	class Tag {
+	static class Tag {
 		int position;
-		Map item;
-	};
+	}
 
-	OnClickListener checkBoxClicked = new OnClickListener() {
-		public void onClick(View v) {
-			final CheckBox checkbox = (CheckBox) v;
-			View pView = (View) v.getParent();
-			Tag tag = (Tag) pView.getTag();
-			if (checkbox.isChecked()) {
-				checkedItems.add(tag.position);
-			} else {
-				checkedItems.remove(tag.position);
-			}
-			// v.getTag()
-			for (Button button : getBarButtons()) {
-				button.setEnabled(!checkedItems.isEmpty());
-			}
+	private final OnClickListener checkBoxClicked = v -> {
+		final CheckBox checkbox = (CheckBox) v;
+		View pView = (View) v.getParent();
+		Tag tag = (Tag) pView.getTag();
+		if (checkbox.isChecked()) {
+			checkedItems.add(tag.position);
+		} else {
+			checkedItems.remove(tag.position);
 		}
-
+		// v.getTag()
+		for (Button button : getBarButtons()) {
+			button.setEnabled(!checkedItems.isEmpty());
+		}
 	};
 
 	public List<Button> getBarButtons() {
-		List<Button> barButtons = new ArrayList<Button>();
-		barButtons.add((Button) findViewById(R.id.delete));
-		barButtons.add((Button) findViewById(R.id.top));
-		barButtons.add((Button) findViewById(R.id.up));
-		barButtons.add((Button) findViewById(R.id.down));
-		barButtons.add((Button) findViewById(R.id.bottom));
+		List<Button> barButtons = new ArrayList<>();
+		barButtons.add(findViewById(R.id.delete));
+		barButtons.add(findViewById(R.id.top));
+		barButtons.add(findViewById(R.id.up));
+		barButtons.add(findViewById(R.id.down));
+		barButtons.add(findViewById(R.id.bottom));
 		return barButtons;
 	}
 
-	OnClickListener itemClicked = new OnClickListener() {
-		public void onClick(View v) {
-			Tag tag = (Tag) v.getTag();
+	private final OnClickListener itemClicked = v -> {
+		Tag tag = (Tag) v.getTag();
 
-			MetaHolder metaHolder = new MetaHolder(getApplicationContext());
-			MetaFile mfile = metaHolder.get(tag.position);
+		MetaHolder metaHolder = new MetaHolder(getApplicationContext());
+		MetaFile metaFile = metaHolder.get(tag.position);
 
-			if (mfile.getTitle().equals(contentService.currentTitle())) {
-				contentService.pauseOrPlay();
-			} else {
-				// This saves our position
-				if (contentService.isPlaying())
-					contentService.pauseNow();
-				contentService.play(tag.position);
-			}
-			showPodcasts();
+		if (metaFile.getTitle().equals(contentService.currentTitle())) {
+			contentService.pauseOrPlay();
+		} else {
+			// This saves our position
+			if (contentService.isPlaying())
+				contentService.pauseNow();
+			contentService.play(tag.position);
 		}
+		showPodcasts();
 	};
 
-	OnLongClickListener itemLongClicked = new OnLongClickListener() {
+	private final OnLongClickListener itemLongClicked = new OnLongClickListener() {
 		public boolean onLongClick(View v) {
 			final Tag tag = (Tag) v.getTag();
 
 			final MetaHolder metaHolder = new MetaHolder(getApplicationContext());
-			final MetaFile mfile = metaHolder.get(tag.position);
+			final MetaFile metaFile = metaHolder.get(tag.position);
 
 			// Ask the user if they want to really delete all
 			new AlertDialog.Builder(PodcastList.this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Delete Before?")
-					.setMessage("Delete all before " + mfile.getTitle())
-					.setPositiveButton("Confirm Delete " + tag.position + " podcasts", new DialogInterface.OnClickListener() {
-						@Override
-						public void onClick(DialogInterface dialog, int which) {
-							if (contentService.isPlaying())
-								contentService.pauseNow();
+					.setMessage("Delete all before " + metaFile.getTitle())
+					.setPositiveButton("Confirm Delete " + tag.position + " podcasts", (dialog, which) -> {
+						if (contentService.isPlaying())
+							contentService.pauseNow();
 
-							while ((tag.position--) != 0) {
-								contentService.deletePodcast(0);
-							}
-
-							podcastsAdapter.notifyDataSetChanged();
-                            showPodcasts();
+						while ((tag.position--) != 0) {
+							contentService.deletePodcast(0);
 						}
 
+						podcastsAdapter.notifyDataSetChanged();
+showPodcasts();
 					}).setNegativeButton("Cancel", null).show();
 
 			return true;

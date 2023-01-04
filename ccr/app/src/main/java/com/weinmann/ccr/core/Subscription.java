@@ -19,13 +19,13 @@ public class Subscription implements Parcelable, Comparable<Subscription> {
              return new Subscription[size];
          }
      };
-	public static int GLOBAL = 0;
+	public static final int GLOBAL = 0;
     public int                maxDownloads = GLOBAL;
-    public String             name;
-    public OrderingPreference orderingPreference;
-	public String             url;
+    public final String             name;
+    public final OrderingPreference orderingPreference;
+	public final String             url;
     public boolean enabled;
-    public boolean priority;
+    public final boolean priority;
 
     public Subscription(String name, String url) {
         this(name, url, GLOBAL, OrderingPreference.FIFO, true, false);

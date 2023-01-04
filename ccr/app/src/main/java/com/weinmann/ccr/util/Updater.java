@@ -2,10 +2,10 @@ package com.weinmann.ccr.util; import android.os.Handler;
 
 public class Updater extends Thread {
 
-	Handler handler;
+	private final Handler handler;
 	private boolean keepGoing = true;
 
-	Runnable runnable;
+	private final Runnable runnable;
 
 	public Updater(Handler handler, Runnable runnable) {
 		this.handler = handler;

@@ -38,21 +38,6 @@ public class CcrSettings extends PreferenceActivity {
     protected void onStop() {
         super.onStop();
         SharedPreferences app_preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        String accounts = app_preferences.getString("accounts", "");
-        if (app_preferences.getBoolean("emailSecret", false)) {
-            if (!accounts.startsWith("anon:")) {
-                SharedPreferences.Editor editor = app_preferences.edit();
-                editor.putString("accounts", "anon:" + System.currentTimeMillis());
-                editor.commit();
-            }
-        } else {
-            if (accounts.startsWith("anon:")) {
-                SharedPreferences.Editor editor = app_preferences.edit();
-                // We use null to mean ask google.
-                editor.putString("accounts", null);
-                editor.commit();
-            }
-        }
 
         //Prepare to cycle the alarm host service
         Intent serviceIntent = new Intent();

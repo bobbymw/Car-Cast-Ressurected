@@ -50,19 +50,19 @@ public class Subscriptions extends BaseActivity {
 
 	SimpleAdapter listAdapter;
 	ListView listView;
-	List<Map<String, Object>> subscriptions = new ArrayList<Map<String, Object>>();
+	private final List<Map<String, Object>> subscriptions = new ArrayList<>();
 
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.subscription_list);
 		setTitle(CarCastResurrectedApplication.getAppTitle() + ": Subscriptions");
-		listView = (ListView) findViewById(R.id.siteList);
+		listView = findViewById(R.id.siteList);
 		registerForContextMenu(listView);
 
 		ExternalMediaStatus status = ExternalMediaStatus.getExternalMediaStatus();
 		if (status == ExternalMediaStatus.unavailable) {
-			Toast.makeText(getApplicationContext(), "Unable to read subscriptions from sdcard", Toast.LENGTH_LONG);
+			Toast.makeText(getApplicationContext(), "Unable to read subscriptions from sdcard", Toast.LENGTH_LONG).show();
 			return;
 		}
 
@@ -150,23 +150,17 @@ public class Subscriptions extends BaseActivity {
 		}
 		if (item.getItemId() == R.id.deleteAllSubscriptions) {
 			new AlertDialog.Builder(Subscriptions.this).setIcon(android.R.drawable.ic_dialog_alert).setMessage("Delete All Subscriptions?")
-					.setPositiveButton("Delete", new DialogInterface.OnClickListener() {
-						@Override
-						public void onClick(DialogInterface dialog, int which) {
-							contentService.deleteAllSubscriptions();
-							reloadSubscriptions();
-						}
+					.setPositiveButton("Delete", (dialog, which) -> {
+						contentService.deleteAllSubscriptions();
+						reloadSubscriptions();
 					}).setNegativeButton("Cancel", null).show();
 		}
 		if (item.getItemId() == R.id.resetToDemoSubscriptions) {
 			new AlertDialog.Builder(Subscriptions.this).setIcon(android.R.drawable.ic_dialog_alert)
 					.setMessage("Reset to Demo Subscriptions (will delete all current subscriptions)?")
-					.setPositiveButton("Reset to Demos", new DialogInterface.OnClickListener() {
-						@Override
-						public void onClick(DialogInterface dialog, int which) {
-							contentService.resetToDemoSubscriptions();
-							reloadSubscriptions();
-						}
+					.setPositiveButton("Reset to Demos", (dialog, which) -> {
+						contentService.resetToDemoSubscriptions();
+						reloadSubscriptions();
 					}).setNegativeButton("Cancel", null).show();
 			return true;
 		}
@@ -177,7 +171,7 @@ public class Subscriptions extends BaseActivity {
 		if (item.getItemId() == R.id.export) {
 			exportOpml();
 		}
-        if (item.getItemId() == R.id.importx) {
+		if (item.getItemId() == R.id.importx) {
             startActivityForResult(new Intent(this, OpmlLocator.class), 0);
         }
 		return super.onMenuItemSelected(featureId, item);
@@ -188,7 +182,7 @@ public class Subscriptions extends BaseActivity {
 		subscriptions.clear();
 
 		// If we have no content service... then game over... cant display anything
-		List<Subscription> sites = new ArrayList<Subscription>();
+		List<Subscription> sites = new ArrayList<>();
 		if (contentService != null) {
 			sites = getSubscriptions();
 		}
@@ -196,7 +190,7 @@ public class Subscriptions extends BaseActivity {
 		Collections.sort(sites);
 
 		for (Subscription sub : sites) {
-			Map<String, Object> item = new HashMap<String, Object>();
+			Map<String, Object> item = new HashMap<>();
 			item.put("name", sub.name);
 
 			if (sub.enabled)

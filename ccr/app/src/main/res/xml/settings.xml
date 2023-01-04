@@ -56,7 +56,7 @@
 
     <CheckBoxPreference
         android:defaultValue="true"
-        android:key="notifiyOnZeroDownloads"
+        android:key="notifyOnZeroDownloads"
         android:summary="Show download notification when no downloads?"
         android:title="Show Zero Downloads?" />
 

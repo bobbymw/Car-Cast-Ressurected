@@ -17,7 +17,7 @@
 package com.weinmann.ccr.core;
 
 /***
- * This Class lifted whole from the Randmom Music Player project, google example
+ * This Class lifted whole from the Random Music Player project, google example
  */
 
 /**
@@ -27,7 +27,7 @@ package com.weinmann.ccr.core;
  */
 public interface MusicFocusable {
     /** Signals that audio focus was gained. */
-    public void onGainedAudioFocus();
+    void onGainedAudioFocus();
 
     /**
      * Signals that audio focus was lost.
@@ -35,5 +35,5 @@ public interface MusicFocusable {
      * @param canDuck If true, audio can continue in "ducked" mode (low volume). Otherwise, all
      * audio must stop.
      */
-    public void onLostAudioFocus(boolean canDuck);
+    void onLostAudioFocus(boolean canDuck);
 }

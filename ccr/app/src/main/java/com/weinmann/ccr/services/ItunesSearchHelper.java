@@ -38,8 +38,8 @@ public class ItunesSearchHelper extends SearchHelper {
             StringBuilder res = new StringBuilder();
             JSONObject jObject = new JSONObject(sb.toString());
             JSONArray results =  jObject.getJSONArray("results");
-            System.out.println(results.get(0));
-            for(int i=0;i<results.length();i++){
+			System.out.println(results.get(0));
+			for(int i=0;i<results.length();i++) {
                 JSONObject result = (JSONObject) results.get(i);
                 res.append(result.get("trackName"));
                 res.append("=");

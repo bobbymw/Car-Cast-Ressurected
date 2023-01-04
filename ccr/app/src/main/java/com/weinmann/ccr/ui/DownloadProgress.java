@@ -22,7 +22,6 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.weinmann.ccr.R;
-import com.weinmann.ccr.core.CarCastResurrectedApplication;
 import com.weinmann.ccr.core.Config;
 import com.weinmann.ccr.util.Updater;
 
@@ -42,8 +41,8 @@ public class DownloadProgress extends BaseActivity implements Runnable {
 				idle = true;
 			}
 		}
-		Button startDownloads = (Button) findViewById(R.id.startDownloads);
-		Button abort = (Button) findViewById(R.id.AbortDownloads);
+		Button startDownloads = findViewById(R.id.startDownloads);
+		Button abort = findViewById(R.id.AbortDownloads);
 		startDownloads.setEnabled(idle);
 		abort.setEnabled(!idle);
 	}
@@ -53,54 +52,39 @@ public class DownloadProgress extends BaseActivity implements Runnable {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.download_progress);
 
-		final Button startDownloads = (Button) findViewById(R.id.startDownloads);
-		startDownloads.setOnClickListener(new OnClickListener() {
-			@Override public void onClick(View v) {
+		final Button startDownloads = findViewById(R.id.startDownloads);
+		startDownloads.setOnClickListener(v -> {
 
-				SharedPreferences app_preferences = PreferenceManager.getDefaultSharedPreferences(DownloadProgress.this);
-        		WifiManager wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+			SharedPreferences app_preferences = PreferenceManager.getDefaultSharedPreferences(DownloadProgress.this);
+			WifiManager wifi = (WifiManager) getSystemService(Context.WIFI_SERVICE);
 
-				if (app_preferences.getBoolean("wifiDownload", true) && (!wifi.isWifiEnabled() || wifi.getConnectionInfo().getIpAddress() == 0)
-						&& app_preferences.getBoolean("wifiWarning", true) 
-						) {
+			if (app_preferences.getBoolean("wifiDownload", true) && (!wifi.isWifiEnabled() || wifi.getConnectionInfo().getIpAddress() == 0)
+					&& app_preferences.getBoolean("wifiWarning", true) 
+					) {
 
-					String title =  "WIFI is not enabled.";
-					if (wifi.getConnectionInfo().getIpAddress() == 0) title = "WIFI is not connected.";
+				String title =  "WIFI is not enabled.";
+				if (wifi.getConnectionInfo().getIpAddress() == 0) title = "WIFI is not connected.";
 
-					new AlertDialog.Builder(DownloadProgress.this).setTitle(title).setIcon(android.R.drawable.ic_dialog_alert)
-					.setMessage("Do you want to use your carrier?  You may use up your data plan's bandwidth allocation or incur overage charges...")
-					.setNegativeButton("Yikes, no", null).setPositiveButton("Sure, go ahead", new DialogInterface.OnClickListener() {
-
-						@Override
-						public void onClick(DialogInterface dialog, int which) {
-							doDownloads();
-						}
-					}).show();
-				} else {
-					//either WIFI is enabled or settings indicate WIFI is not required for auto download, so go ahead
-					doDownloads();
-				}
+				new AlertDialog.Builder(DownloadProgress.this).setTitle(title).setIcon(android.R.drawable.ic_dialog_alert)
+				.setMessage("Do you want to use your carrier?  You may use up your data plan's bandwidth allocation or incur overage charges...")
+				.setNegativeButton("Yikes, no", null).setPositiveButton("Sure, go ahead", (dialog, which) -> doDownloads()).show();
+			} else {
+				//either WIFI is enabled or settings indicate WIFI is not required for auto download, so go ahead
+				doDownloads();
 			}
 		});
 
-		final Button abort = (Button) findViewById(R.id.AbortDownloads);
-		abort.setOnClickListener(new OnClickListener() {
-			@Override public void onClick(View v) {
-				NotificationManager mNotificationManager = (NotificationManager) getSystemService(Activity.NOTIFICATION_SERVICE);
-				mNotificationManager.cancel(22);
-				mNotificationManager.cancel(23);
-				// Crude... but effective...
-				System.exit(-1);
-			}
+		final Button abort = findViewById(R.id.AbortDownloads);
+		abort.setOnClickListener(v -> {
+			NotificationManager mNotificationManager = (NotificationManager) getSystemService(Activity.NOTIFICATION_SERVICE);
+			mNotificationManager.cancel(22);
+			mNotificationManager.cancel(23);
+			// Crude... but effective...
+			System.exit(-1);
 		});
 
-		final Button downloadDetails = (Button) findViewById(R.id.downloadDetails);
-		downloadDetails.setOnClickListener(new OnClickListener() {
-			@Override public void onClick(View v) {
-				startActivity(new Intent(DownloadProgress.this, Downloader.class));
-
-			}
-		});
+		final Button downloadDetails = findViewById(R.id.downloadDetails);
+		downloadDetails.setOnClickListener(v -> startActivity(new Intent(DownloadProgress.this, Downloader.class)));
 
 		startDownloads.setEnabled(false);
 		abort.setEnabled(false);
@@ -131,14 +115,14 @@ public class DownloadProgress extends BaseActivity implements Runnable {
 	}
 
 	private void reset() {
-		TextView labelSubscriptionSites = (TextView) findViewById(R.id.labelSubscriptionSites);
-		TextView scanning = (TextView) findViewById(R.id.scanning);
-		TextView downloadingLabel = (TextView) findViewById(R.id.downloadingLabel);
-		TextView progressSimple = (TextView) findViewById(R.id.progressSimple);
-		TextView progressBytes = (TextView) findViewById(R.id.progressBytes);
-		ProgressBar progressBar = (ProgressBar) findViewById(R.id.progress);
-		TextView subscriptionName = (TextView) findViewById(R.id.subscriptionName);
-		TextView title = (TextView) findViewById(R.id.title);
+		TextView labelSubscriptionSites = findViewById(R.id.labelSubscriptionSites);
+		TextView scanning = findViewById(R.id.scanning);
+		TextView downloadingLabel = findViewById(R.id.downloadingLabel);
+		TextView progressSimple = findViewById(R.id.progressSimple);
+		TextView progressBytes = findViewById(R.id.progressBytes);
+		ProgressBar progressBar = findViewById(R.id.progress);
+		TextView subscriptionName = findViewById(R.id.subscriptionName);
+		TextView title = findViewById(R.id.title);
 
 		labelSubscriptionSites.setVisibility(TextView.INVISIBLE);
 		scanning.setVisibility(TextView.INVISIBLE);
@@ -176,18 +160,18 @@ public class DownloadProgress extends BaseActivity implements Runnable {
 
 	private void updateFromString(String downloadStatus) {
 		// Toss out first comma separated value (busy or idle)
-		List<String> fullStatus = new ArrayList<String>(Arrays.asList(downloadStatus.split(",")));
+		List<String> fullStatus = new ArrayList<>(Arrays.asList(downloadStatus.split(",")));
 		fullStatus.remove(0);
 		String[] status = fullStatus.toArray(new String[fullStatus.size()]);
 
-		TextView labelSubscriptionSites = (TextView) findViewById(R.id.labelSubscriptionSites);
-		TextView scanning = (TextView) findViewById(R.id.scanning);
+		TextView labelSubscriptionSites = findViewById(R.id.labelSubscriptionSites);
+		TextView scanning = findViewById(R.id.scanning);
 		labelSubscriptionSites.setVisibility(TextView.VISIBLE);
 		scanning.setVisibility(TextView.VISIBLE);
-		TextView downloadingLabel = (TextView) findViewById(R.id.downloadingLabel);
-		TextView progressSimple = (TextView) findViewById(R.id.progressSimple);
-		TextView progressBytes = (TextView) findViewById(R.id.progressBytes);
-		ProgressBar progressBar = (ProgressBar) findViewById(R.id.progress);
+		TextView downloadingLabel = findViewById(R.id.downloadingLabel);
+		TextView progressSimple = findViewById(R.id.progressSimple);
+		TextView progressBytes = findViewById(R.id.progressBytes);
+		ProgressBar progressBar = findViewById(R.id.progress);
 
 		labelSubscriptionSites.setVisibility(TextView.VISIBLE);
 		scanning.setText("  Scanning sites " + status[0] + "/" + status[1]);
@@ -213,8 +197,8 @@ public class DownloadProgress extends BaseActivity implements Runnable {
 				progressBar.setProgress((int) ((cb * 100) / tb));
 			}
 		}
-		TextView subscriptionName = (TextView) findViewById(R.id.subscriptionName);
-		TextView title = (TextView) findViewById(R.id.title);
+		TextView subscriptionName = findViewById(R.id.subscriptionName);
+		TextView title = findViewById(R.id.title);
 		subscriptionName.setText(status[6]);
 		title.setText(status[7]);
 
