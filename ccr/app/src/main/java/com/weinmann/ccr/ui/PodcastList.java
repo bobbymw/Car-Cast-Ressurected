@@ -28,6 +28,8 @@ import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
+import androidx.core.text.HtmlCompat;
+
 import com.weinmann.ccr.R;
 import com.weinmann.ccr.core.CarCastResurrectedApplication;
 import com.weinmann.ccr.core.Util;
@@ -50,7 +52,7 @@ public class PodcastList extends BaseActivity {
 	}
 
 	@Override
-	protected void onContentService() {
+	protected void onPostContentServiceChanged() {
 		showPodcasts();
 	}
 
@@ -240,7 +242,7 @@ public class PodcastList extends BaseActivity {
 					if (desc != null) {
 						TextView description = view.findViewById(R.id.description);
 						// Strip the HTML and then go back to a string to drop formatting.
-						description.setText(Html.fromHtml(desc).toString());
+						description.setText(HtmlCompat.fromHtml(desc, HtmlCompat.FROM_HTML_MODE_LEGACY).toString());
 					}
 					return view;
 				}

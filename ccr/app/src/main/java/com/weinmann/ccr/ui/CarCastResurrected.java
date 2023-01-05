@@ -59,7 +59,7 @@ public class CarCastResurrected extends BaseActivity {
 	}
 
 	@Override
-	protected void onContentService() {
+	protected void onPostContentServiceChanged() {
 		updatePausePlay();
 		updateUI();
 	}

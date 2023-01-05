@@ -31,7 +31,7 @@ public class DownloadProgress extends BaseActivity implements Runnable {
 	Updater updater;
 
 	@Override
-	protected void onContentService() {
+	protected void onPostContentServiceChanged() {
 		String status = contentService.encodedDownloadStatus();
 		boolean idle = false;
 		if (status.equals("")) {

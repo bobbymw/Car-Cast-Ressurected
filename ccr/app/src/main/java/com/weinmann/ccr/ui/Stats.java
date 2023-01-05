@@ -11,7 +11,7 @@ import com.weinmann.ccr.services.DownloadHistory;
 public class Stats extends BaseActivity {
 
 
-    protected void onContentService() {
+    protected void onPostContentServiceChanged() {
 
         setTitle(CarCastResurrectedApplication.getAppTitle() + ": Stats");
 

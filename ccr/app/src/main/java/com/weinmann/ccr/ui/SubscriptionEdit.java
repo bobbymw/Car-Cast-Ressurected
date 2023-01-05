@@ -30,7 +30,7 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 	ProgressDialog dialog;
 
 	@Override
-	protected void onContentService() {
+	protected void onPostContentServiceChanged() {
 		if (currentSub != null) {
 			((TextView) findViewById(R.id.editsite_name)).setText(currentSub.name);
 			((TextView) findViewById(R.id.editsite_url)).setText(currentSub.url);
@@ -57,8 +57,8 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 		findViewById(R.id.saveEditSite).setOnClickListener(v -> {
 			String name = ((TextView) findViewById(R.id.editsite_name)).getText().toString();
 			String url = getURL();
-			Boolean enabled = ((CheckBox) findViewById(R.id.enabled)).isChecked();
-			Boolean priority = ((CheckBox) findViewById(R.id.priority)).isChecked();
+			boolean enabled = ((CheckBox) findViewById(R.id.enabled)).isChecked();
+			boolean priority = ((CheckBox) findViewById(R.id.priority)).isChecked();
 			CheckBox newestFirst = findViewById(R.id.fifoLifo);
 			Spinner spinner = findViewById(R.id.subMax);
 			int max = mValues[spinner.getSelectedItemPosition()];

@@ -77,7 +77,7 @@ public class SearchResults extends BaseActivity {
 	}
 
 	@Override
-	protected void onContentService() {
+	protected void onPostContentServiceChanged() {
 		showResults();
 	}
 

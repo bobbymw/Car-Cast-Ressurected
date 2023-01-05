@@ -1,26 +1,11 @@
 package com.weinmann.ccr.ui;
 
-import java.io.BufferedReader;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.LinkedList;
-import java.util.zip.GZIPOutputStream;
-
-import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.weinmann.ccr.R;
-import com.weinmann.ccr.core.Sayer;
 import com.weinmann.ccr.util.Updater;
 
 /**

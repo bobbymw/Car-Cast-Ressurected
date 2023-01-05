@@ -18,6 +18,7 @@ import android.preference.PreferenceManager;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
+import android.view.KeyEvent;
 
 import com.weinmann.ccr.R;
 import com.weinmann.ccr.core.AudioFocusHelper;
@@ -47,6 +48,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     MetaHolder metaHolder;
     SearchHelper searchHelper;
 
+    private PlayStatusListener playStatusListener;
     private Config config;
     FileSubscriptionHelper subHelper;
 
@@ -528,6 +530,49 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         metaHolder = new MetaHolder(getApplicationContext());
     }
 
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        int not_sticky = Service.START_NOT_STICKY;
+        Log.i("CarCastResurrected", "ContentService.onStartCommand()");
+
+        if (intent.getAction().equals(Intent.ACTION_MEDIA_BUTTON)) {
+            KeyEvent keyEvent = (KeyEvent) intent.getExtras().get(Intent.EXTRA_KEY_EVENT);
+
+            switch (keyEvent.getKeyCode()) {
+                case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+                    pauseOrPlay();
+                    break;
+                case KeyEvent.KEYCODE_MEDIA_PLAY:
+                    if (!isPlaying()) {
+                        play();
+                    }
+                    break;
+                case KeyEvent.KEYCODE_MEDIA_PAUSE:
+                case KeyEvent.KEYCODE_MEDIA_STOP:
+                    pauseNow();
+                    break;
+                case KeyEvent.KEYCODE_MEDIA_NEXT:
+                    bumpForwardSeconds(30);
+                    break;
+                case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
+                    bumpForwardSeconds(-30);
+                    break;
+            }
+        } else if (intent.getAction().equals(AudioManager.ACTION_AUDIO_BECOMING_NOISY)) {
+            // if unplugged
+            if (intent.getIntExtra("state", 0) == 0 && isPlaying()) {
+                pauseNow();
+                bumpForwardSeconds(-2);
+                if (playStatusListener != null) {
+                    playStatusListener.playStateUpdated(false);
+                }
+
+            }
+        }
+
+        return not_sticky;
+    }
+
 
     @Override
     public void onDestroy() {
@@ -818,6 +863,10 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         if (downloadHelper == null)
             return "";
         return downloadHelper.sb.toString();
+    }
+
+    public void setPlayStatusListener(PlayStatusListener playStatusListener) {
+        this.playStatusListener = playStatusListener;
     }
 
     public void newContentAdded() {

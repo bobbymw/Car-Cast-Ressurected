@@ -80,7 +80,7 @@ public class Subscriptions extends BaseActivity {
 
 	// Invoked when the background service is bound (hooked up) to this Activity
 	@Override
-	protected void onContentService() {
+	protected void onPostContentServiceChanged() {
 		reloadSubscriptions();
 	}
 
