@@ -1,11 +1,13 @@
 package com.weinmann.ccr.services;
 
-import android.app.Notification;
+import android.app.PendingIntent;
 import android.app.Service;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.PlaybackParams;
@@ -15,10 +17,16 @@ import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.preference.PreferenceManager;
+import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaSessionCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.KeyEvent;
+
+import androidx.core.app.NotificationManagerCompat;
+import androidx.media.session.MediaButtonReceiver;
 
 import com.weinmann.ccr.R;
 import com.weinmann.ccr.core.AudioFocusHelper;
@@ -32,8 +40,6 @@ import com.weinmann.ccr.util.ExportOpml;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.SortedSet;
 
@@ -41,16 +47,22 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     private final IBinder binder = new LocalBinder();
     private final NotificationHelper mNotificationHelper = new NotificationHelper(this);
     int currentPodcastInPlayer = -1;
-    DownloadHelper downloadHelper;
-    Location location;
-    MediaMode mediaMode = MediaMode.UnInitialized;
-    MediaPlayer mediaPlayer;
-    MetaHolder metaHolder;
-    SearchHelper searchHelper;
+    private DownloadHelper downloadHelper;
+    private Location location;
+    private MediaMode mediaMode = MediaMode.UnInitialized;
+
+    public MediaSessionCompat getMediaSessionCompat() {
+        return mMediaSessionCompat;
+    }
+
+    private MediaSessionCompat mMediaSessionCompat;
+    private MediaPlayer mediaPlayer;
+    private MetaHolder metaHolder;
+    private SearchHelper searchHelper;
 
     private PlayStatusListener playStatusListener;
     private Config config;
-    FileSubscriptionHelper subHelper;
+    private FileSubscriptionHelper subHelper;
 
     enum PauseReason {
         PhoneCall,
@@ -127,7 +139,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         } catch (Exception e) {
             // do nothing
         }
-        if (!mediaPlayer.isPlaying()) {
+        if (!isPlaying()) {
             saveState();
         }
 
@@ -200,7 +212,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public void deletePodcast(int position) {
-        if (mediaPlayer.isPlaying() && currentPodcastInPlayer == position) {
+        if (isPlaying() && currentPodcastInPlayer == position) {
             pauseNow();
         }
 
@@ -229,7 +241,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     void deleteUpTo(int upTo) {
-        if (mediaPlayer.isPlaying()) {
+        if (isPlaying()) {
             pauseNow();
             mediaPlayer.stop();
             mediaPlayer.reset();
@@ -247,8 +259,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     void doDownloadCompletedNotification(int got) {
-
-        mNotificationHelper.cancel(NotificationHelper.PLAYING_NOTIFICATION_ID);
 
         // Allow UI to update download text (only when in debug mode) this seems
         // suboptimal
@@ -402,7 +412,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     // finished, in which case
     // we are actually no longer playing but we were just were a millisecond or
     // so ago.)
-    void next(boolean inTheActOfPlaying) {
+    private void next(boolean inTheActOfPlaying) {
         mediaMode = MediaMode.UnInitialized;
 
         // if we are at end.
@@ -412,7 +422,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             mediaPlayer.reset();
             // say(activity, "That's all folks");
             if (inTheActOfPlaying)
-                disableNotification();
+                showPlayingNotification();
             return;
         }
 
@@ -421,7 +431,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         if (inTheActOfPlaying)
             play();
         else
-            disableNotification();
+            showPlayingNotification();
     }
 
     @Override
@@ -450,7 +460,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
     }
 
-    private void initDirs() {
+    private void initSubHelper() {
         File legacyFile = config.getCarCastPath("podcasts.txt");
         File siteListFile = config.getCarCastPath("podcasts.properties");
         subHelper = new FileSubscriptionHelper(siteListFile, legacyFile);
@@ -462,36 +472,13 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
         config = new Config(getApplicationContext());
 
-        initDirs();
+        initSubHelper();
 
         partialWakeLock = ((PowerManager) getSystemService(Context.POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
                 CarCastResurrectedApplication.getAppTitle());
         partialWakeLock.setReferenceCounted(false);
 
-        PhoneStateListener phoneStateListener = new PhoneStateListener() {
-            @Override
-            public void onCallStateChanged(int state, String incomingNumber) {
-                super.onCallStateChanged(state, incomingNumber);
-
-                if (state == TelephonyManager.CALL_STATE_OFFHOOK || state == TelephonyManager.CALL_STATE_RINGING) {
-                    // It's possible that this listener is registered before the resetMediaPlayer
-                    // method is called, which establishes the MediaPlayer instance.
-                    if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                        mPauseReason = PauseReason.PhoneCall;
-                        pauseNow();
-                        bumpForwardSeconds(-5);
-                    }
-                }
-
-                if (state == TelephonyManager.CALL_STATE_IDLE && mPauseReason == PauseReason.PhoneCall) {
-                    mPauseReason = PauseReason.UserRequest;
-                    pauseOrPlay();
-                }
-            }
-        };
-
-        final TelephonyManager telMgr = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
-        telMgr.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
+        initPhoneStateHandling();
 
         metaHolder = new MetaHolder(getApplicationContext());
 
@@ -508,22 +495,77 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         Intent intent = new Intent(Intent.ACTION_MEDIA_BUTTON);
         intent.setComponent(mMediaButtonReceiverComponent);
 
-        // foreground stuff
-        try {
-            mStartForeground = getClass().getMethod("startForeground", mStartForegroundSignature);
-            mStopForeground = getClass().getMethod("stopForeground", mStopForegroundSignature);
-        } catch (NoSuchMethodException e) {
-            // Running on an older platform.
-            mStartForeground = mStopForeground = null;
-            try {
-                mSetForeground = getClass().getMethod("setForeground", mSetForegroundSignature);
-            } catch (NoSuchMethodException e1) {
-                throw new IllegalStateException("OS doesn't have Service.startForeground OR Service.setForeground!");
-            }
-        }
-
         mAudioFocusHelper = new AudioFocusHelper(getApplicationContext(), this);
+        initMediaSession();
+        initMediaSessionMetadata();
 
+    }
+
+    private void initPhoneStateHandling() {
+        PhoneStateListener phoneStateListener = new PhoneStateListener() {
+            @Override
+            public void onCallStateChanged(int state, String incomingNumber) {
+                super.onCallStateChanged(state, incomingNumber);
+
+                if (state == TelephonyManager.CALL_STATE_OFFHOOK || state == TelephonyManager.CALL_STATE_RINGING) {
+                    // It's possible that this listener is registered before the resetMediaPlayer
+                    // method is called, which establishes the MediaPlayer instance.
+                    if (isPlaying()) {
+                        mPauseReason = PauseReason.PhoneCall;
+                        pauseNow();
+                        bumpForwardSeconds(-5);
+                    }
+                }
+
+                if (state == TelephonyManager.CALL_STATE_IDLE && mPauseReason == PauseReason.PhoneCall) {
+                    mPauseReason = PauseReason.UserRequest;
+                    pauseOrPlay();
+                }
+            }
+        };
+
+        final TelephonyManager telMgr = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
+        telMgr.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
+    }
+
+
+    private void initMediaSession() {
+        ComponentName mediaButtonReceiver = new ComponentName(getApplicationContext(), MusicIntentReceiver.class);
+        mMediaSessionCompat = new MediaSessionCompat(getApplicationContext(), "Tag", mediaButtonReceiver, null);
+
+        Intent mediaButtonIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
+        mediaButtonIntent.setClass(this, MusicIntentReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, mediaButtonIntent, 0);
+        mMediaSessionCompat.setMediaButtonReceiver(pendingIntent);
+    }
+
+    private void setMediaPlaybackState(int state) {
+        PlaybackStateCompat.Builder playbackstateBuilder = new PlaybackStateCompat.Builder();
+        if( state == PlaybackStateCompat.STATE_PLAYING ) {
+            playbackstateBuilder.setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE | PlaybackStateCompat.ACTION_PAUSE);
+        } else {
+            playbackstateBuilder.setActions(PlaybackStateCompat.ACTION_PLAY_PAUSE | PlaybackStateCompat.ACTION_PLAY);
+        }
+        playbackstateBuilder.setState(state, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 0);
+        mMediaSessionCompat.setPlaybackState(playbackstateBuilder.build());
+    }
+
+    private void initMediaSessionMetadata() {
+        MediaMetadataCompat.Builder metadataBuilder = new MediaMetadataCompat.Builder();
+        Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.ccp_launcher);
+
+        //Notification icon in card
+        metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, icon);
+        metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, icon);
+
+        //lock screen icon for pre lollipop
+        metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, icon);
+        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, "Display Title");
+        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, "Display Subtitle");
+        metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, 1);
+        metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, 1);
+
+        mMediaSessionCompat.setMetadata(metadataBuilder.build());
     }
 
     public void resetPodcastDir() {
@@ -532,7 +574,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        int not_sticky = Service.START_NOT_STICKY;
         Log.i("CarCastResurrected", "ContentService.onStartCommand()");
 
         if (intent.getAction().equals(Intent.ACTION_MEDIA_BUTTON)) {
@@ -569,8 +610,9 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
             }
         }
+        MediaButtonReceiver.handleIntent(mMediaSessionCompat, intent);
 
-        return not_sticky;
+        return Service.START_NOT_STICKY;
     }
 
 
@@ -578,17 +620,14 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     public void onDestroy() {
         super.onDestroy();
         Log.i("CarCastResurrected", "ContentService destroyed");
-        // Toast.makeText(getApplication(), "Service Destroyed", 1000).show();
-
-        // Make sure our notification is gone.
         disableNotification();
 
         giveUpAudioFocus();
+        mMediaSessionCompat.release();
 
         AudioManager mAudioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
         ComponentName mMediaButtonReceiverComponent = new ComponentName(this, MusicIntentReceiver.class);
         mAudioManager.unregisterMediaButtonEventReceiver(mMediaButtonReceiverComponent);
-
     }
 
 
@@ -600,7 +639,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
 
     public void pauseNow() {
-        if (mediaPlayer.isPlaying()) {
+        if (isPlaying()) {
 
             // Save current position
             currentMeta().setCurrentPos(mediaPlayer.getCurrentPosition());
@@ -608,11 +647,10 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
             mediaPlayer.pause();
             mediaMode = MediaMode.Paused;
-            // say(activity, "paused " + currentTitle());
+            setMediaPlaybackState(PlaybackStateCompat.STATE_PAUSED);
             saveState();
         }
-        disableNotification();
-        // activity.disableJumpButtons();
+        showPausedNotification();
     }
 
     /**
@@ -620,17 +658,11 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
      */
     public boolean pauseOrPlay() {
         try {
-            if (mediaPlayer.isPlaying()) {
+            if (isPlaying()) {
                 pauseNow();
                 return false;
             } else {
-                if (mediaMode == MediaMode.Paused) {
-                    enableNotification();
-                    mediaPlayer.start();
-                    mediaMode = MediaMode.Playing;
-                } else {
-                    play();
-                }
+                play();
                 return true;
             }
         } catch (Exception e) {
@@ -641,17 +673,18 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     private void play() {
         try {
-            enableNotification();
+            showPlayingNotification();
 
             if (!fullReset())
                 return;
 
             tryToGetAudioFocus();
 
-            // say(activity, "started " + currentTitle());
-            if (!mediaPlayer.isPlaying()) {
+            if (!isPlaying()) {
                 mediaPlayer.start();
                 mediaMode = MediaMode.Playing;
+                mMediaSessionCompat.setActive(true);
+                setMediaPlaybackState(PlaybackStateCompat.STATE_PLAYING);
             }
             saveState();
         } catch (Exception e) {
@@ -660,7 +693,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public void play(int position) {
-        if (mediaPlayer.isPlaying()) {
+        if (isPlaying()) {
             mediaPlayer.stop();
         }
         currentPodcastInPlayer = position;
@@ -669,10 +702,9 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     public void previous() {
         boolean playing = false;
-        if (mediaPlayer.isPlaying()) {
+        if (isPlaying()) {
             playing = true;
             mediaPlayer.stop();
-            // say(activity, "stopped " + currentTitle());
         }
         mediaMode = MediaMode.UnInitialized;
         if (currentPodcastInPlayer > 0) {
@@ -838,7 +870,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     public void updateNotification(String update) {
         mNotificationHelper.cancel(NotificationHelper.DOWNLOAD_NOTIFICATION_ID);
-        mNotificationHelper.notify(NotificationHelper.PLAYING_NOTIFICATION_ID, R.drawable.iconbusy,
+        mNotificationHelper.notify(NotificationHelper.DOWNLOAD_NOTIFICATION_ID, R.drawable.iconbusy,
                               "Downloading started", update);
         /*
         Notification notification = new Notification(R.drawable.iconbusy, "Downloading started", System.currentTimeMillis());
@@ -874,95 +906,29 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public void directorySettingsChanged() {
-        initDirs();
+        initSubHelper();
         metaHolder = new MetaHolder(getApplicationContext(), currentFile());
-    }
-
-    // This section cribbed from
-    // http://developer.android.com/reference/android/app/Service.html#startForeground%28int,%20android.app.Notification%29
-
-    private static final Class<?>[] mSetForegroundSignature = new Class[]{boolean.class};
-    private static final Class<?>[] mStartForegroundSignature = new Class[]{int.class, Notification.class};
-    private static final Class<?>[] mStopForegroundSignature = new Class[]{boolean.class};
-
-    private Method mSetForeground;
-    private Method mStartForeground;
-    private Method mStopForeground;
-    private final Object[] mSetForegroundArgs = new Object[1];
-    private final Object[] mStartForegroundArgs = new Object[2];
-    private final Object[] mStopForegroundArgs = new Object[1];
-
-    void invokeMethod(Method method, Object[] args) {
-        try {
-            method.invoke(this, args);
-        } catch (InvocationTargetException | IllegalAccessException e) {
-            // Should not happen.
-            Log.w("CarCastResurrected-ContentService", "Unable to invoke method", e);
-        }
-    }
-
-    /**
-     * This is a wrapper around the new startForeground method, using the older APIs if it is not available.
-     */
-    void startForegroundCompat(int id, Notification notification) {
-        // If we have the new startForeground API, then use it.
-        if (mStartForeground != null) {
-            mStartForegroundArgs[0] = id;
-            mStartForegroundArgs[1] = notification;
-            invokeMethod(mStartForeground, mStartForegroundArgs);
-            return;
-        }
-
-        // Fall back on the old API.
-        mSetForegroundArgs[0] = Boolean.TRUE;
-        invokeMethod(mSetForeground, mSetForegroundArgs);
-    }
-
-    /**
-     * This is a wrapper around the new stopForeground method, using the older APIs if it is not available.
-     */
-    void stopForegroundCompat() {
-        // If we have the new stopForeground API, then use it.
-        if (mStopForeground != null) {
-            mStopForegroundArgs[0] = Boolean.TRUE;
-            try {
-                mStopForeground.invoke(this, mStopForegroundArgs);
-            } catch (InvocationTargetException | IllegalAccessException e) {
-                // Should not happen.
-                Log.w("CarCastResurrected-ContentService", "Unable to invoke stopForeground", e);
-            }
-            return;
-        }
-
-        // Fall back on the old API. Note to cancel BEFORE changing the
-        // foreground state, since we could be killed at that point.
-        mSetForegroundArgs[0] = Boolean.FALSE;
-        invokeMethod(mSetForeground, mSetForegroundArgs);
     }
 
     private WakeLock partialWakeLock;
 
-    void enableNotification() {
-        Notification notification = mNotificationHelper.buildNotification(
-                                                               R.drawable.ccp_launcher,
-                                                               getText(R.string.notification_status).toString(),
-                                                               getText(R.string.notification_text).toString());
-        /*
-        Notification notification = new Notification(R.drawable.ccp_launcher, null, System.currentTimeMillis());
-        notification.setLatestEventInfo(this, getText(R.string.notification_status), getText(R.string.notification_text), contentIntent);
-        notification.flags |= Notification.FLAG_ONGOING_EVENT | Notification.FLAG_NO_CLEAR;
-         */
-
-        startForegroundCompat(R.string.notification_status, notification);
-
-        partialWakeLock.acquire(60*1000L /*1 minute*/);
-
-    }
-
     void disableNotification() {
-        stopForegroundCompat();
+        NotificationManagerCompat.from(this).cancel(NotificationHelper.PLAYING_NOTIFICATION_ID);
+        stopForeground(true);
 
         partialWakeLock.release();
+    }
+
+
+
+    private void showPlayingNotification() {
+        partialWakeLock.acquire(60*1000L /*1 minute*/);
+        mNotificationHelper.notifyPlayPause(true, mMediaSessionCompat);
+    }
+
+    private void showPausedNotification() {
+        partialWakeLock.acquire(60*1000L /*1 minute*/);
+        mNotificationHelper.notifyPlayPause(false, mMediaSessionCompat);
     }
 
     public SortedSet<Integer> moveTop(SortedSet<Integer> checkedItems) {
@@ -989,7 +955,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
      * Signals that audio focus was gained.
      */
     public void onGainedAudioFocus() {
-        //Toast.makeText(getApplicationContext(), "CarCastResurrected: gained audio focus.", Toast.LENGTH_SHORT).show();
         mAudioFocus = AudioFocus.Focused;
 
         if (mPauseReason == PauseReason.FocusLoss) {
@@ -1005,8 +970,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
      *                audio must stop.
      */
     public void onLostAudioFocus(boolean canDuck) {
-//        Toast.makeText(getApplicationContext(), "lost audio focus." + (canDuck ? "can duck" :
-//                "no duck"), Toast.LENGTH_SHORT).show();
         mAudioFocus = canDuck ? AudioFocus.NoFocusCanDuck : AudioFocus.NoFocusNoDuck;
 
         if (isPlaying()) {
@@ -1021,6 +984,4 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
                 && mAudioFocusHelper.requestFocus())
             mAudioFocus = AudioFocus.Focused;
     }
-
-
 }
