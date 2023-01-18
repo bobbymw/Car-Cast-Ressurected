@@ -8,10 +8,9 @@ import com.weinmann.ccr.core.CarCastResurrectedApplication;
 import com.weinmann.ccr.core.ContentServiceListener;
 import com.weinmann.ccr.core.Subscription;
 import com.weinmann.ccr.services.ContentService;
-import com.weinmann.ccr.services.PlayStatusListener;
 
 
-public abstract class BaseActivity extends Activity implements ContentServiceListener, PlayStatusListener {
+public abstract class BaseActivity extends Activity implements ContentServiceListener {
 	protected ContentService contentService;
 
 	public ContentService getContentService() {
@@ -28,13 +27,8 @@ public abstract class BaseActivity extends Activity implements ContentServiceLis
 
 	@Override
 	public void onContentServiceChanged(ContentService service) {
-		if (contentService != null) {
-			contentService.setPlayStatusListener(null);
-		}
-
 	    contentService = service;
 	    if (service != null) {
-	    	service.setPlayStatusListener(this);
             onPostContentServiceChanged();
         }
 	}
@@ -48,9 +42,4 @@ public abstract class BaseActivity extends Activity implements ContentServiceLis
     protected CarCastResurrectedApplication getCarCastResurrectedApplication() {
         return ((CarCastResurrectedApplication)getApplication());
     }
-
-	@Override
-	public void playStateUpdated(boolean playing) {
-		// default implementation does nothing
-	}
 }

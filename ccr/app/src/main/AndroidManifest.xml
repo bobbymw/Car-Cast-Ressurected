@@ -102,7 +102,14 @@
         
         <service android:name=".services.ContentService"
             android:exported="true"
-            android:foregroundServiceType="mediaPlayback" />
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.media.AUDIO_BECOMING_NOISY" />
+            </intent-filter>
+        </service>
         <service android:name=".services.AlarmService" />
         <service android:name=".services.AlarmHostService"
             android:exported="true" >
@@ -120,11 +127,8 @@
             </intent-filter>
         </receiver>
 
-        <receiver android:name=".services.MusicIntentReceiver"
+        <receiver android:name="androidx.media.session.MediaButtonReceiver"
             android:exported="true" >
-            <intent-filter>
-                <action android:name="android.media.AUDIO_BECOMING_NOISY" />
-            </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
