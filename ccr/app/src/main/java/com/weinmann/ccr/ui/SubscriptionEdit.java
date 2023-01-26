@@ -76,7 +76,7 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 			ExternalMediaStatus status = ExternalMediaStatus.getExternalMediaStatus();
 			if (status != ExternalMediaStatus.writeable) {
 				// unable to access sdcard
-				Toast.makeText(getApplicationContext(), "Unable to add subscription to sdcard", Toast.LENGTH_LONG).show();
+				Util.toast(this, "Unable to add subscription to sdcard");
 				return;
 			}
 
@@ -130,13 +130,12 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 	}
 	
 	private void testUrl() {
-		DownloadHistory history = new DownloadHistory(getApplicationContext());
+		DownloadHistory history = new DownloadHistory(getConfig());
 		enclosureHandler = new EnclosureHandler(history);
 		Spinner spinner = findViewById(R.id.subMax);
 		int max = mValues[spinner.getSelectedItemPosition()];
 		if (max == Subscription.GLOBAL) {
-            Config config = new Config(getApplicationContext());
-			max = config.getMax();
+			max = getConfig().getMax();
 		}
 		enclosureHandler.setMax(max);
 
@@ -198,8 +197,6 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 			}
 			
 			findViewById(R.id.saveEditSite).requestFocus();
-
 		}
 	};
-
 }

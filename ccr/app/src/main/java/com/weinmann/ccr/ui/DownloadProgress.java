@@ -95,7 +95,7 @@ public class DownloadProgress extends BaseActivity implements Runnable {
 	private void doDownloads()
 	{
 		reset();
-		contentService.startDownloadingNewPodCasts(new Config(contentService).getMax());
+		contentService.startDownloadingNewPodCasts();
 
 		findViewById(R.id.AbortDownloads).setEnabled(true);
 		findViewById(R.id.startDownloads).setEnabled(false);

@@ -7,13 +7,11 @@ import org.xmlpull.v1.XmlPullParser;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Xml;
-import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.Button;
-import android.widget.Toast;
 
 import com.weinmann.ccr.R;
 import com.weinmann.ccr.core.Subscription;
+import com.weinmann.ccr.core.Util;
 
 public class OpmlImport extends BaseActivity {
 
@@ -61,11 +59,10 @@ public class OpmlImport extends BaseActivity {
 					
 				}				
 			}
-			Toast.makeText(getApplicationContext(), "Imported "+count+" subscriptions", Toast.LENGTH_LONG).show();
+			Util.toast(this, "Imported "+count+" subscriptions");
 			finish();
 		} catch (Throwable t) {
-            Toast.makeText(getApplicationContext(), "Yikes "+t.getMessage(), Toast.LENGTH_LONG).show();
-			//t.printStackTrace();
+            Util.toast(this, "Yikes "+t.getMessage());
 		} finally {
 			try {
 				in.close();

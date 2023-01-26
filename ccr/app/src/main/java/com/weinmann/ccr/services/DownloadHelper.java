@@ -24,9 +24,9 @@ import com.weinmann.ccr.core.Subscription;
 import com.weinmann.ccr.core.Util;
 
 public class DownloadHelper implements Sayer {
+    private final Config mConfig;
     private String currentSubscription = " ";
     private String currentTitle = " ";
-    private final int globalMax;
     private int podcastsCurrentBytes;
     private int podcastsDownloaded;
     private int podcastsTotalBytes;
@@ -36,8 +36,8 @@ public class DownloadHelper implements Sayer {
 	private boolean isRunning = true;
 	StringBuilder sb = new StringBuilder("Getting ready to start downloads\n");
 
-	public DownloadHelper(int globalMax) {
-		this.globalMax = globalMax;
+	public DownloadHelper(Config config) {
+        this.mConfig = config;
 	}
 
     public boolean isRunning(){
@@ -59,7 +59,7 @@ public class DownloadHelper implements Sayer {
 	@SuppressLint("DefaultLocale")
     protected void downloadNewPodCasts(ContentService contentService) {
         try {
-            DownloadHistory history = new DownloadHistory(contentService);
+            DownloadHistory history = new DownloadHistory(mConfig);
 
             say("Starting find/download new podcasts. CarCastResurrected ver " + CarCastResurrectedApplication.getVersion());
 
@@ -80,8 +80,10 @@ public class DownloadHelper implements Sayer {
                     try {
                         say("\nScanning subscription/feed: " + sub.url);
                         int foundStart = enclosureHandler.metaNets.size();
-                        if (sub.maxDownloads == Subscription.GLOBAL)
+                        if (sub.maxDownloads == Subscription.GLOBAL) {
+                            int globalMax = mConfig.getMax();
                             enclosureHandler.setMax(globalMax);
+                        }
                         else
                             enclosureHandler.setMax(sub.maxDownloads);
 
@@ -142,7 +144,6 @@ public class DownloadHelper implements Sayer {
                 podcastsDownloaded = i + 1;
 
                 try {
-                    Config config = new Config(contentService);
                     String prefix = "";
 
                                 /*
@@ -165,14 +166,14 @@ public class DownloadHelper implements Sayer {
                             prefix = contentService.currentMeta().getBaseFilename() + ":00:";
 
                     String castFileName = prefix + System.currentTimeMillis() + localFileExt;
-                    File castFile = config.getPodcastRootPath(castFileName);
+                    File castFile = mConfig.getPodcastRootPath(castFileName);
 
 
                     Log.d("CarCastResurrected", "New podcast file: " + castFileName);
 
                     currentSubscription = newPodcasts.get(i).getSubscription();
                     currentTitle = newPodcasts.get(i).getTitle();
-                    File tempFile = config.getPodcastRootPath("tempFile");
+                    File tempFile = mConfig.getPodcastRootPath("tempFile");
                     say("Subscription: " + currentSubscription);
                     say("Title: " + currentTitle);
                     say("enclosure url: " + new URL(newPodcasts.get(i).getUrl()));

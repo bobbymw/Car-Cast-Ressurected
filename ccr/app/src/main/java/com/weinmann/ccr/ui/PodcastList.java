@@ -8,11 +8,9 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.text.Html;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.Menu;
@@ -131,7 +129,7 @@ public class PodcastList extends BaseActivity {
 		if (item.getItemId() == R.id.deleteListenedTo) {
 			String currTitle = "";
 			currTitle = contentService.currentTitle();
-			MetaHolder metaHolder = new MetaHolder(getApplicationContext());
+			MetaHolder metaHolder = new MetaHolder(getConfig());
 			for (int i = metaHolder.getSize() - 1; i >= 0; i--) {
 				MetaFile metaFile = metaHolder.get(i);
 				if (currTitle.equals(metaFile.getTitle())) {
@@ -164,7 +162,7 @@ public class PodcastList extends BaseActivity {
 		if (item.getItemId() == R.id.eraseDownloadHistory) {
 			new AlertDialog.Builder(this).setIcon(android.R.drawable.ic_dialog_alert).setMessage("Erase Download History?")
 					.setPositiveButton("Erase", (dialog, which) -> {
-						int historyDeleted = new DownloadHistory(getApplicationContext()).eraseHistory();
+						int historyDeleted = new DownloadHistory(getConfig()).eraseHistory();
 						Util.toast(PodcastList.this, "Erased " + historyDeleted + " podcast from download history.");
 					}).setNegativeButton("Cancel", null).show();
 
@@ -176,7 +174,7 @@ public class PodcastList extends BaseActivity {
 
 		ListView listView = findViewById(R.id.list);
 
-		MetaHolder metaHolder = new MetaHolder(getApplicationContext());
+		MetaHolder metaHolder = new MetaHolder(getConfig());
 		list.clear();
 
 		for (int i = 0; i < metaHolder.getSize(); i++) {
@@ -289,7 +287,7 @@ public class PodcastList extends BaseActivity {
 	private final OnClickListener itemClicked = v -> {
 		Tag tag = (Tag) v.getTag();
 
-		MetaHolder metaHolder = new MetaHolder(getApplicationContext());
+		MetaHolder metaHolder = new MetaHolder(getConfig());
 		MetaFile metaFile = metaHolder.get(tag.position);
 
 		if (metaFile.getTitle().equals(contentService.currentTitle())) {
@@ -307,7 +305,7 @@ public class PodcastList extends BaseActivity {
 		public boolean onLongClick(View v) {
 			final Tag tag = (Tag) v.getTag();
 
-			final MetaHolder metaHolder = new MetaHolder(getApplicationContext());
+			final MetaHolder metaHolder = new MetaHolder(getConfig());
 			final MetaFile metaFile = metaHolder.get(tag.position);
 
 			// Ask the user if they want to really delete all
@@ -322,7 +320,7 @@ public class PodcastList extends BaseActivity {
 						}
 
 						podcastsAdapter.notifyDataSetChanged();
-showPodcasts();
+						showPodcasts();
 					}).setNegativeButton("Cancel", null).show();
 
 			return true;

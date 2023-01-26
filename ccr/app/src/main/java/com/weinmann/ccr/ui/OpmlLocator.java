@@ -4,13 +4,11 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.text.InputType;
-import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.Toast;
 
 import com.weinmann.ccr.R;
+import com.weinmann.ccr.core.Util;
 
 import java.io.File;
 
@@ -64,7 +62,7 @@ public class OpmlLocator extends BaseActivity implements Runnable {
         pathEditText.setEnabled(true);
         pathEditText.setInputType(InputType.TYPE_CLASS_TEXT);
 
-        Toast.makeText(getApplicationContext(), "SORRY!\n\n"+message, Toast.LENGTH_LONG).show();
+        Util.toast(this, "SORRY!\n\n"+message);
     }
 
 

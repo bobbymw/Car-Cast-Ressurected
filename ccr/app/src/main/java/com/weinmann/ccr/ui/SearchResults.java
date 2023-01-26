@@ -13,16 +13,14 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.AdapterView.AdapterContextMenuInfo;
-import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
-import android.widget.Toast;
 
 import com.weinmann.ccr.R;
 import com.weinmann.ccr.core.CarCastResurrectedApplication;
 import com.weinmann.ccr.core.Subscription;
+import com.weinmann.ccr.core.Util;
 
 public class SearchResults extends BaseActivity {
 
@@ -38,13 +36,9 @@ public class SearchResults extends BaseActivity {
 
 		boolean b = contentService.addSubscription(new Subscription(name, url));
 		if (b) {
-			Toast.makeText(getApplicationContext(),
-					"Added subscription to " + name, Toast.LENGTH_LONG)
-					.show();
+			Util.toast(this, "Added subscription to " + name);
 		} else {
-			Toast.makeText(getApplicationContext(),
-					"Already subscribed to " + name, Toast.LENGTH_LONG)
-					.show();
+			Util.toast(this, "Already subscribed to " + name);
 		}
 	}
 
@@ -136,9 +130,7 @@ public class SearchResults extends BaseActivity {
 
 			List<Subscription> sites = getResults();
 
-			Toast.makeText(getApplicationContext(),
-					"Found " + sites.size() + " results", Toast.LENGTH_LONG)
-					.show();
+			Util.toast(this, "Found " + sites.size() + " results");
 
 			List<Map<String, String>> list = new ArrayList<>();
 
@@ -154,9 +146,7 @@ public class SearchResults extends BaseActivity {
 							"url" }, new int[] { R.id.text1, R.id.text2 });
 			listView.setAdapter(notes);
 		} catch (Throwable t) {
-			Toast.makeText(getApplicationContext(),
-					"Sorry, problem with search results.",
-					Toast.LENGTH_LONG).show();
+			Util.toast(this, "Sorry, problem with search results.");
 		}
 	}
 

@@ -36,7 +36,6 @@ public class CarCastResurrected extends BaseActivity {
 	boolean toggleOnPause;
 	Updater updater;
 	ImageButton pausePlay = null;
-    private Config config;
 
 	// Need handler for callbacks to the UI thread
 	final Handler handler = new Handler();
@@ -79,7 +78,6 @@ public class CarCastResurrected extends BaseActivity {
 	public void onCreate(Bundle savedInstanceState) {
 
 		super.onCreate(savedInstanceState);
-		config = new Config(getApplicationContext());
 
 		setTitle(CarCastResurrectedApplication.getAppTitle());
 
@@ -128,8 +126,8 @@ public class CarCastResurrected extends BaseActivity {
 		previousButton.setSoundEffectsEnabled(true);
 		previousButton.setOnClickListener(new BumpCast(this, false));
 
-		String lastRun = config.getLastRun();
-		boolean shouldShowSplash = config.getShowSplash();
+		String lastRun = getConfig().getLastRun();
+		boolean shouldShowSplash = getConfig().getShowSplash();
 		if (lastRun == null || shouldShowSplash) {
 			startActivity(new Intent(this, Splash.class));
 		} else if (!lastRun.equals(CarCastResurrectedApplication.releaseData[0])) {
@@ -138,14 +136,14 @@ public class CarCastResurrected extends BaseActivity {
 						.setMessage(CarCastResurrectedApplication.releaseData[1])
 						.setNeutralButton("Close", null).show();
 		}
-		config.saveLastRun();
+		getConfig().saveLastRun();
 
-		int orientationValue = config.getOrientation();
+		int orientationValue = getConfig().getOrientation();
 		setRequestedOrientation(orientationValue);
 
 		ActivityCompat.requestPermissions(
 				this,
-				Config.requestedPermissions,
+				getConfig().requestedPermissions,
 				1
 		);
 
@@ -219,7 +217,7 @@ public class CarCastResurrected extends BaseActivity {
 	protected void onResume() {
 		super.onResume();
 
-		if (config.getKeepDisplayOn())
+		if (getConfig().getKeepDisplayOn())
 			getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 		else
 			getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -232,12 +230,12 @@ public class CarCastResurrected extends BaseActivity {
 	}
 
 	public void updateUI() {
-		if (contentService == null || !config.arePermissionsConfigured()) {
+		if (contentService == null || !getConfig().arePermissionsConfigured()) {
 			return;
 		}
 
 		try {
-			File podcastsRoot = config.getPodcastsRoot();
+			File podcastsRoot = getConfig().getPodcastsRoot();
 			if (!podcastsRoot.exists() || !podcastsRoot.canWrite()) {
 				if (!podcastsRoot.mkdirs() || !podcastsRoot.canWrite()) {
 					TextView textView = findViewById(R.id.title);
@@ -311,7 +309,7 @@ public class CarCastResurrected extends BaseActivity {
 
 	@RequiresApi(api = Build.VERSION_CODES.R)
 	private void getManageAllFilesPermission() {
-		if (!config.arePermissionsConfigured()){
+		if (!getConfig().arePermissionsConfigured()){
 			Intent intent = new Intent();
 			intent.setAction(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
 			Uri uri = Uri.fromParts("package", this.getPackageName(), null);

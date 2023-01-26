@@ -18,7 +18,7 @@ public class Stats extends BaseActivity {
         StringBuilder sb = new StringBuilder();
         sb.append("History Size: ");
 
-        DownloadHistory downloadHistory = new DownloadHistory(getApplicationContext());
+        DownloadHistory downloadHistory = new DownloadHistory(getConfig());
         sb.append(downloadHistory.size());
         sb.append("\n");
 
@@ -36,11 +36,5 @@ public class Stats extends BaseActivity {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.stats);
-
-
 	}
-
-
-
-
 }

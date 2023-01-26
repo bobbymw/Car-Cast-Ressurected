@@ -12,7 +12,7 @@ import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.InputSource;
 
-import android.app.Activity;
+import android.content.ContextWrapper;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -78,8 +78,8 @@ public class Util {
 		}
 	}
 
-	public static void toast(Activity activity, String string) {
-		Toast.makeText(activity.getApplicationContext(), string, Toast.LENGTH_LONG).show();
+	public static void toast(ContextWrapper contextWrapper, String string) {
+		Toast.makeText(contextWrapper.getApplicationContext(), string, Toast.LENGTH_LONG).show();
 	}
 
 	private static final SAXParserFactory saxParserFactory = SAXParserFactory.newInstance();
@@ -103,5 +103,4 @@ public class Util {
 		connection.setReadTimeout(20 * 1000);
 		return connection;
 	}
-
 }

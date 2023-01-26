@@ -24,12 +24,10 @@ public class FileSubscriptionHelper {
 
     private static final String CONCAT_DIVIDER = "\\;";
     private static final String REGEX_DIVIDER = "\\\\;";
-    private final File legacyFile;
     private final File subscriptionFile;
 
-    public FileSubscriptionHelper(File subscriptionFile, File legacyFile) {
+    public FileSubscriptionHelper(File subscriptionFile) {
         this.subscriptionFile = subscriptionFile;
-        this.legacyFile = legacyFile;
     }
 
     public boolean addSubscription(Subscription toAdd) {
@@ -160,29 +158,8 @@ public class FileSubscriptionHelper {
         return false;
     }
 
-    List<Subscription> getLegacySitesFromFile() {
-        if (!legacyFile.exists()) {
-            return Collections.emptyList();
-        }
-        try {
-            InputStream input = new FileInputStream(legacyFile);
-            return readLegacySites(input);
-
-        } catch (Exception e1) {
-            return Collections.emptyList();
-        }
-    }
-
 
     public List<Subscription> getSubscriptions() {
-        if (legacyFile.exists()) {
-            // we need to convert to the new format first:
-            List<Subscription> legacy = getLegacySitesFromFile();
-            saveSubscriptions(legacy);
-            legacyFile.delete();
-            // short-cut out:
-            return legacy;
-        }
 
         if (!subscriptionFile.exists()) {
             subscriptionFile.getParentFile().mkdirs();

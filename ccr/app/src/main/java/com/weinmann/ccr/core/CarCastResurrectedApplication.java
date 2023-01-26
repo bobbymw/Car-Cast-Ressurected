@@ -207,12 +207,18 @@ public class CarCastResurrectedApplication extends Application {
     private Intent serviceIntent;
     private ContentService contentService;
     private ContentServiceListener contentServiceListener;
+    private Config mConfig;
 
     @Override
     public void onCreate() {
         super.onCreate();
+
+        mConfig = new Config(this);
         serviceIntent = new Intent(this, ContentService.class);
-        //WifiConnectedReceiver.registerForWifiBroadcasts(getApplicationContext());
+    }
+
+    public Config getConfig() {
+        return mConfig;
     }
 
     private final ServiceConnection contentServiceConnection = new ServiceConnection() {

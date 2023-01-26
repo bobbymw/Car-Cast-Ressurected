@@ -86,10 +86,8 @@ public class AlarmService extends Service {
 					@Override
 					public void onServiceConnected(ComponentName name, IBinder service) {
 
-		        		int maxDownloads = Integer.parseInt(app_preferences.getString("listmax", "2"));
-
         				ContentService contentService = ((ContentService.LocalBinder) service).getService();
-						contentService.startDownloadingNewPodCasts(maxDownloads);
+						contentService.startDownloadingNewPodCasts();
 					}
 
 					@Override

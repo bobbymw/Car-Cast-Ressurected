@@ -18,16 +18,16 @@ import com.weinmann.ccr.core.Config;
 
 /** Meta information about podcasts. **/
 public class MetaHolder {
-	private final Config config;
 
 	private final List<MetaFile> metas = new ArrayList<>();
+	private final Config mConfig;
 
-	public MetaHolder(Context context) {
-        	this(context, null);
+	public MetaHolder(Config config) {
+        	this(config, null);
 	}
 
-	public MetaHolder(Context context, File current) {
-		this.config = new Config(context);
+	public MetaHolder(Config config, File current) {
+		mConfig = config;
 		loadMeta(current);
 	}
 
@@ -49,8 +49,8 @@ public class MetaHolder {
 		String currentName = current == null ? null : current.getName();
         int currentIndex = -1;
         boolean priorityFileAddedToOrder = false;
-		File[] files = config.getPodcastsRoot().listFiles();
-        File order = config.getPodcastRootPath("podcast-order.txt");
+		File[] files = mConfig.getPodcastsRoot().listFiles();
+        File order = mConfig.getPodcastRootPath("podcast-order.txt");
 
 		if (files == null)
 			return;
@@ -61,7 +61,7 @@ public class MetaHolder {
 				DataInputStream dis = new DataInputStream(new FileInputStream(order));
 				String line = null;
 				while ((line = dis.readLine()) != null) {
-					File file = config.getPodcastRootPath(line);
+					File file = mConfig.getPodcastRootPath(line);
 					if (file.exists()) {
 						metas.add(new MetaFile(file));
 						if (currentName != null && currentName.equals(file.getName()) ) {
@@ -228,7 +228,7 @@ public class MetaHolder {
 	}
 
 	public void saveOrder() {
-        File order = config.getPodcastRootPath("podcast-order.txt");
+        File order = mConfig.getPodcastRootPath("podcast-order.txt");
         StringBuilder sb = new StringBuilder();
 		for (MetaFile metaFile : metas) {
 			sb.append(metaFile.getFilename());

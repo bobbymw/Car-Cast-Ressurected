@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -25,7 +24,6 @@ import android.widget.AdapterView;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
-import android.widget.Toast;
 
 import com.weinmann.ccr.R;
 import com.weinmann.ccr.core.CarCastResurrectedApplication;
@@ -62,7 +60,7 @@ public class Subscriptions extends BaseActivity {
 
 		ExternalMediaStatus status = ExternalMediaStatus.getExternalMediaStatus();
 		if (status == ExternalMediaStatus.unavailable) {
-			Toast.makeText(getApplicationContext(), "Unable to read subscriptions from sdcard", Toast.LENGTH_LONG).show();
+			Util.toast(this, "Unable to read subscriptions from sdcard");
 			return;
 		}
 
@@ -108,7 +106,7 @@ public class Subscriptions extends BaseActivity {
 			intent.putExtra("subscription", sub);
 			startActivityForResult(intent, info.position);
 		} else if (item.getTitle().equals(ERASE_SUBSCRIPTIONS_S_HISTORY)) {
-			int erasedPodcasts = new DownloadHistory(getApplicationContext()).eraseHistory(sub.name);
+			int erasedPodcasts = new DownloadHistory(getConfig()).eraseHistory(sub.name);
 			Util.toast(this, "Removed " + erasedPodcasts + " podcasts from download history.");
 		}
 		return true;
@@ -214,7 +212,6 @@ public class Subscriptions extends BaseActivity {
 			contentService.exportOPML(opmlFile);
             opmlFile.close();
 		} catch (Exception ex) {
-			// Do a toast...
 			Util.toast(this, "Problem creating temporary file\n"+ex.getMessage());
 			return;
 		}
@@ -230,5 +227,4 @@ public class Subscriptions extends BaseActivity {
 		// Use a chooser to decide whether email or mms
 		startActivity(Intent.createChooser(sendIntent, "Export OPML..."));
 	}
-
 }

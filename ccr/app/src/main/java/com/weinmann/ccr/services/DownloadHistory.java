@@ -25,19 +25,16 @@ public class DownloadHistory implements Sayer {
     private final static String HISTORY_TWO_HEADER = "history version 2";
     private List<HistoryEntry> historyEntries = new ArrayList<>();
     private final StringBuilder sb = new StringBuilder();
-
-    private final Context context;
-//    private static File historyFile = new File(Config.PodcastsRoot, "history.prop");
+    private final Config mConfig;
 
 
     /**
      * Create a object that represents the download history. It is backed to a file.
      */
     @SuppressWarnings("unchecked")
-    public DownloadHistory(Context context) {
-        this.context = context;
-        Config config = new Config(context);
-        File historyFile = config.getPodcastRootPath("history.prop");
+    public DownloadHistory(Config config) {
+        mConfig = config;
+        File historyFile = mConfig.getPodcastRootPath("history.prop");
         try {
             DataInputStream dis = new DataInputStream(new FileInputStream(historyFile));
             String line = dis.readLine();
@@ -119,8 +116,7 @@ public class DownloadHistory implements Sayer {
 
 
     private void save() {
-        Config config = new Config(context);
-        File historyFile = config.getPodcastRootPath("history.prop");
+        File historyFile = mConfig.getPodcastRootPath("history.prop");
         try {
             DataOutputStream dosDataOutputStream = new DataOutputStream(new FileOutputStream(historyFile));
             dosDataOutputStream.write(HISTORY_TWO_HEADER.getBytes());

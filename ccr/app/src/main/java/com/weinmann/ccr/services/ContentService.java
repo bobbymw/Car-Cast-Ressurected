@@ -62,7 +62,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     private MetaHolder metaHolder;
     private SearchHelper searchHelper;
 
-    private Config config;
     private FileSubscriptionHelper subHelper;
 
     enum PauseReason {
@@ -107,6 +106,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
                 if (event != null)
                 {
                     int action = event.getAction();
+
                     if (action == KeyEvent.ACTION_DOWN) {
                         switch (event.getKeyCode()) {
                             case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
@@ -132,10 +132,10 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
                                 bumpForwardSeconds(-30);
                                 return true;
                         }
-                        return false;
-
                     }
                 }
+
+                return false;
             }
             return super.onMediaButtonEvent(mediaButtonEvent);
         }
@@ -306,7 +306,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         for (int i = 0; i < upTo; i++) {
             metaHolder.delete(0);
         }
-        metaHolder = new MetaHolder(getApplicationContext(), currentFile());
+        metaHolder = new MetaHolder(getConfig(), currentFile());
         tryToRestoreLocation();
         if (location == null)
             currentPodcastInPlayer = 0;
@@ -331,7 +331,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
                                   "Downloads Finished", "Downloaded " + got + " podcasts.");
         }
 
-        metaHolder = new MetaHolder(getApplicationContext(), currentFile());
+        metaHolder = new MetaHolder(getConfig(), currentFile());
         if (currentPodcastInPlayer >= metaHolder.getSize()) {
             currentPodcastInPlayer = 0;
         }
@@ -370,7 +370,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     private void applyVariableSpeedProperties() {
-        float speed = config.getSpeedChoice();
+        float speed = getConfig().getSpeedChoice();
 
         PlaybackParams playbackParams = mediaPlayer.getPlaybackParams();
         playbackParams.setSpeed(speed);
@@ -510,16 +510,13 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     private void initSubHelper() {
-        File legacyFile = config.getCarCastPath("podcasts.txt");
-        File siteListFile = config.getCarCastPath("podcasts.properties");
-        subHelper = new FileSubscriptionHelper(siteListFile, legacyFile);
+        File siteListFile = getConfig().getCarCastPath("podcasts.properties");
+        subHelper = new FileSubscriptionHelper(siteListFile);
     }
 
     @Override
     public void onCreate() {
         super.onCreate();
-
-        config = new Config(getApplicationContext());
 
         initSubHelper();
 
@@ -529,7 +526,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
         initPhoneStateHandling();
 
-        metaHolder = new MetaHolder(getApplicationContext());
+        metaHolder = new MetaHolder(getConfig());
 
         // restore state;
         currentPodcastInPlayer = 0;
@@ -608,7 +605,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public void resetPodcastDir() {
-        metaHolder = new MetaHolder(getApplicationContext());
+        metaHolder = new MetaHolder(getConfig());
     }
 
     @Override
@@ -724,7 +721,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public void restoreState() {
-        final File stateFile = config.getPodcastRootPath("state.dat");
+        final File stateFile = getConfig().getPodcastRootPath("state.dat");
         if (!stateFile.exists()) {
             location = null;
             return;
@@ -742,7 +739,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     public void saveState() {
         try {
-            final File stateFile = config.getPodcastRootPath("state.dat");
+            final File stateFile = getConfig().getPodcastRootPath("state.dat");
             location = Location.save(stateFile, currentTitle());
         } catch (Throwable e) {
             // bummer.
@@ -752,12 +749,12 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     // Synchronized: to ensure that maximum one startDownloadingNewPodCasts()
     // can be active at any time.
     //
-    public synchronized void startDownloadingNewPodCasts(final int max) {
+    public synchronized void startDownloadingNewPodCasts() {
         if (downloadHelper != null && downloadHelper.isRunning()) {
             Log.w("CarCastResurrected", "abort start - CarCastResurrected already running");
             return;
         } else {
-            downloadHelper = new DownloadHelper(max);
+            downloadHelper = new DownloadHelper(getConfig());
         }
 
         Log.w("CarCastResurrected", "startDownloadingNewPodCasts");
@@ -896,12 +893,12 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public void newContentAdded() {
-        metaHolder = new MetaHolder(getApplicationContext(), currentFile());
+        metaHolder = new MetaHolder(getConfig(), currentFile());
     }
 
     public void directorySettingsChanged() {
         initSubHelper();
-        metaHolder = new MetaHolder(getApplicationContext(), currentFile());
+        metaHolder = new MetaHolder(getConfig(), currentFile());
     }
 
     private WakeLock partialWakeLock;
@@ -970,9 +967,13 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
     }
 
-    void tryToGetAudioFocus() {
+    private void tryToGetAudioFocus() {
         if (mAudioFocus != AudioFocus.Focused && mAudioFocusHelper != null
                 && mAudioFocusHelper.requestFocus())
             mAudioFocus = AudioFocus.Focused;
+    }
+
+    private Config getConfig() {
+        return ((CarCastResurrectedApplication)getApplicationContext()).getConfig();
     }
 }

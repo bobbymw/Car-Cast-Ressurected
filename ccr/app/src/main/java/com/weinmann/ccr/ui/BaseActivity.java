@@ -5,6 +5,7 @@ import java.util.List;
 import android.app.Activity;
 
 import com.weinmann.ccr.core.CarCastResurrectedApplication;
+import com.weinmann.ccr.core.Config;
 import com.weinmann.ccr.core.ContentServiceListener;
 import com.weinmann.ccr.core.Subscription;
 import com.weinmann.ccr.services.ContentService;
@@ -42,4 +43,8 @@ public abstract class BaseActivity extends Activity implements ContentServiceLis
     protected CarCastResurrectedApplication getCarCastResurrectedApplication() {
         return ((CarCastResurrectedApplication)getApplication());
     }
+
+	protected Config getConfig() {
+		return ((CarCastResurrectedApplication)getApplicationContext()).getConfig();
+	}
 }
