@@ -10,6 +10,7 @@ import android.util.Log;
 
 import com.weinmann.ccr.services.ContentService;
 import com.weinmann.ccr.services.ContentService.LocalBinder;
+import com.weinmann.ccr.services.FileSubscriptionHelper;
 
 public class CarCastResurrectedApplication extends Application {
     public final static String[] releaseData = new String[]{
@@ -208,12 +209,15 @@ public class CarCastResurrectedApplication extends Application {
     private ContentService contentService;
     private ContentServiceListener contentServiceListener;
     private Config mConfig;
+    private FileSubscriptionHelper mSubscriptionHelper;
 
     @Override
     public void onCreate() {
         super.onCreate();
 
         mConfig = new Config(this);
+
+        mSubscriptionHelper = new FileSubscriptionHelper(mConfig);
         serviceIntent = new Intent(this, ContentService.class);
     }
 
@@ -271,5 +275,4 @@ public class CarCastResurrectedApplication extends Application {
     public void directorySettingsChanged() {
         contentService.directorySettingsChanged();
     }
-
 }

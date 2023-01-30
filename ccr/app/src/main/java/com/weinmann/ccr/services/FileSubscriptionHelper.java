@@ -16,18 +16,20 @@ import java.util.Set;
 
 import android.util.Log;
 
+import com.weinmann.ccr.core.Config;
 import com.weinmann.ccr.core.OrderingPreference;
 import com.weinmann.ccr.core.Subscription;
 import com.weinmann.ccr.core.Util;
+import com.weinmann.ccr.util.ExportOpml;
 
 public class FileSubscriptionHelper {
 
     private static final String CONCAT_DIVIDER = "\\;";
     private static final String REGEX_DIVIDER = "\\\\;";
-    private final File subscriptionFile;
+    private final Config mConfig;
 
-    public FileSubscriptionHelper(File subscriptionFile) {
-        this.subscriptionFile = subscriptionFile;
+    public FileSubscriptionHelper(Config config) {
+        mConfig = config;
     }
 
     public boolean addSubscription(Subscription toAdd) {
@@ -160,14 +162,13 @@ public class FileSubscriptionHelper {
 
 
     public List<Subscription> getSubscriptions() {
+        File subscriptionFile = getSubscriptionFile();
 
         if (!subscriptionFile.exists()) {
             subscriptionFile.getParentFile().mkdirs();
             return resetToDemoSubscriptions();
         }
-        if (!subscriptionFile.exists()) {
-            return null;
-        }
+
         try {
             InputStream dis = new BufferedInputStream(new FileInputStream(subscriptionFile));
             Properties props = new Properties();
@@ -252,9 +253,14 @@ public class FileSubscriptionHelper {
         saveSubscriptions(subs);
         return subs;
     }
+
+    public void exportOPML(FileOutputStream fileOutputStream) {
+        ExportOpml.export(getSubscriptions(), fileOutputStream);
+    }
     
     private boolean saveSubscriptions(List<Subscription> subscriptions) {
         try {
+            File subscriptionFile = getSubscriptionFile();
             BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(subscriptionFile));
             Properties outSubs = new Properties();
             
@@ -273,5 +279,9 @@ public class FileSubscriptionHelper {
             // failure:
             return false;
         }
+    }
+
+    private File getSubscriptionFile() {
+        return mConfig.getCarCastPath("podcasts.properties");
     }
 }

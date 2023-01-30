@@ -21,20 +21,21 @@ import com.weinmann.ccr.R;
 import com.weinmann.ccr.core.CarCastResurrectedApplication;
 import com.weinmann.ccr.core.Subscription;
 import com.weinmann.ccr.core.Util;
+import com.weinmann.ccr.services.FileSubscriptionHelper;
 
 public class SearchResults extends BaseActivity {
 
-	String lastResults;
+	private String lastResults;
 
-	@SuppressWarnings("unchecked")
     private void add(int position) {
         ListView listView = findViewById(R.id.siteList);
         Map<String, String> rowData = (Map<String, String>) listView.getAdapter().getItem(position);
 
         String name = rowData.get("name");
 	    String url = rowData.get("url");
+		FileSubscriptionHelper subscriptionHelper = new FileSubscriptionHelper(getConfig());
 
-		boolean b = contentService.addSubscription(new Subscription(name, url));
+		boolean b = subscriptionHelper.addSubscription(new Subscription(name, url));
 		if (b) {
 			Util.toast(this, "Added subscription to " + name);
 		} else {

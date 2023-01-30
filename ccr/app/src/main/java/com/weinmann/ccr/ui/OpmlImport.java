@@ -12,6 +12,7 @@ import android.widget.Button;
 import com.weinmann.ccr.R;
 import com.weinmann.ccr.core.Subscription;
 import com.weinmann.ccr.core.Util;
+import com.weinmann.ccr.services.FileSubscriptionHelper;
 
 public class OpmlImport extends BaseActivity {
 
@@ -36,8 +37,10 @@ public class OpmlImport extends BaseActivity {
 	}
 
 	void importOpml() {
+		FileSubscriptionHelper subscriptionHelper = new FileSubscriptionHelper(getConfig());
+
 		if(replaceAllOnImport){
-			contentService.deleteAllSubscriptions();
+			subscriptionHelper.deleteAllSubscriptions();
 		}
 		InputStream in = null;
 		try {
@@ -53,7 +56,7 @@ public class OpmlImport extends BaseActivity {
 					if(parser.getName().equals("outline")){
 						String title = parser.getAttributeValue(null, "title");
 						String xmlUrl = parser.getAttributeValue(null, "xmlUrl");
-						if(contentService.addSubscription(new Subscription(title, xmlUrl)))
+						if(subscriptionHelper.addSubscription(new Subscription(title, xmlUrl)))
 							count++;
 					}
 					

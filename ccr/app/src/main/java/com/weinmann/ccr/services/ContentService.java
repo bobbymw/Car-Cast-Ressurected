@@ -62,8 +62,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     private MetaHolder metaHolder;
     private SearchHelper searchHelper;
 
-    private FileSubscriptionHelper subHelper;
-
     enum PauseReason {
         PhoneCall,
         UserRequest,  // paused by user request
@@ -71,7 +69,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     // why did we pause?
-    PauseReason mPauseReason = PauseReason.UserRequest;
+    private PauseReason mPauseReason = PauseReason.UserRequest;
 
     // do we have audio focus?
     enum AudioFocus {
@@ -80,12 +78,12 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         Focused           // we have full audio focus
     }
 
-    AudioFocus mAudioFocus = AudioFocus.NoFocusNoDuck;
+    private AudioFocus mAudioFocus = AudioFocus.NoFocusNoDuck;
 
     // Lifted from RandomMusicPlayer google reference application
     // our AudioFocusHelper object, if it's available (it's available on SDK level >= 8)
     // If not available, this will be null. Always check for null before using!
-    AudioFocusHelper mAudioFocusHelper = null;
+    private AudioFocusHelper mAudioFocusHelper = null;
 
     private final BroadcastReceiver mNoisyReceiver = new BroadcastReceiver() {
         @Override
@@ -175,10 +173,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         return sb.toString();
     }
 
-    public boolean addSubscription(Subscription toAdd) {
-        return subHelper.addSubscription(toAdd);
-    }
-
     public void bumpForwardSeconds(int bump) {
         if (currentPodcastInPlayer >= metaHolder.getSize())
             return;
@@ -225,7 +219,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         return meta == null ? null : meta.file;
     }
 
-    int currentPosition() {
+    private int currentPosition() {
         if (currentPodcastInPlayer >= metaHolder.getSize()) {
             return 0;
         }
@@ -261,10 +255,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         return currentMeta().getTitle();
     }
 
-    public void deleteAllSubscriptions() {
-        subHelper.deleteAllSubscriptions();
-    }
-
     public void deletePodcast(int position) {
         if (isPlaying() && currentPodcastInPlayer == position) {
             pauseNow();
@@ -284,14 +274,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         } catch (Throwable e) {
             // bummer.
         }
-    }
-
-    public void deleteSubscription(Subscription sub) {
-        subHelper.removeSubscription(sub);
-    }
-
-    public void toggleSubscription(Subscription sub) {
-        subHelper.toggleSubscription(sub);
     }
 
     void deleteUpTo(int upTo) {
@@ -335,10 +317,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         if (currentPodcastInPlayer >= metaHolder.getSize()) {
             currentPodcastInPlayer = 0;
         }
-    }
-
-    public boolean editSubscription(Subscription original, Subscription modified) {
-        return subHelper.editSubscription(original, modified);
     }
 
     public String encodedDownloadStatus() {
@@ -403,16 +381,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     public MediaMode getMediaMode() {
         return mediaMode;
-    }
-
-    /**
-     * Gets a Map of URLs to Subscription Name
-     *
-     * @return a map keyed on sub url to value of sub name
-     */
-    public List<Subscription> getSubscriptions() {
-        List<Subscription> subscriptions = subHelper.getSubscriptions();
-        return subscriptions;
     }
 
     public String getWhereString() {
@@ -509,16 +477,9 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
     }
 
-    private void initSubHelper() {
-        File siteListFile = getConfig().getCarCastPath("podcasts.properties");
-        subHelper = new FileSubscriptionHelper(siteListFile);
-    }
-
     @Override
     public void onCreate() {
         super.onCreate();
-
-        initSubHelper();
 
         partialWakeLock = ((PowerManager) getSystemService(Context.POWER_SERVICE)).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK,
                 CarCastResurrectedApplication.getAppTitle());
@@ -716,10 +677,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             play();
     }
 
-    public void resetToDemoSubscriptions() {
-        subHelper.resetToDemoSubscriptions();
-    }
-
     public void restoreState() {
         final File stateFile = getConfig().getPodcastRootPath("state.dat");
         if (!stateFile.exists()) {
@@ -897,7 +854,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public void directorySettingsChanged() {
-        initSubHelper();
         metaHolder = new MetaHolder(getConfig(), currentFile());
     }
 
@@ -931,10 +887,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     public SortedSet<Integer> moveDown(SortedSet<Integer> checkedItems) {
         return metaHolder.moveDown(checkedItems);
-    }
-
-    public void exportOPML(FileOutputStream fileOutputStream) {
-        ExportOpml.export(getSubscriptions(), fileOutputStream);
     }
 
     /**

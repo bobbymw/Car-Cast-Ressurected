@@ -7,6 +7,7 @@ import com.weinmann.ccr.R;
 import com.weinmann.ccr.core.CarCastResurrectedApplication;
 import com.weinmann.ccr.core.Subscription;
 import com.weinmann.ccr.services.DownloadHistory;
+import com.weinmann.ccr.services.FileSubscriptionHelper;
 
 public class Stats extends BaseActivity {
 
@@ -22,7 +23,9 @@ public class Stats extends BaseActivity {
         sb.append(downloadHistory.size());
         sb.append("\n");
 
-        for(Subscription sub: getSubscriptions()){
+        FileSubscriptionHelper subscriptionHelper = new FileSubscriptionHelper(getConfig());
+
+        for(Subscription sub: subscriptionHelper.getSubscriptions()){
             sb.append(sub.name);
             sb.append(": ");
             sb.append(sub.maxDownloads);

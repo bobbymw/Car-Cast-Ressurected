@@ -6,31 +6,26 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
-import android.view.View;
-import android.view.View.OnClickListener;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.weinmann.ccr.R;
-import com.weinmann.ccr.core.Config;
 import com.weinmann.ccr.core.ExternalMediaStatus;
 import com.weinmann.ccr.core.OrderingPreference;
 import com.weinmann.ccr.core.Subscription;
 import com.weinmann.ccr.core.Util;
 import com.weinmann.ccr.services.DownloadHistory;
 import com.weinmann.ccr.services.EnclosureHandler;
+import com.weinmann.ccr.services.FileSubscriptionHelper;
 
 public class SubscriptionEdit extends BaseActivity implements Runnable {
 
-	Subscription currentSub;
-	ProgressDialog dialog;
+	private Subscription currentSub;
+	private ProgressDialog dialog;
 
-	@Override
-	protected void onPostContentServiceChanged() {
+	private void setCurrentSubValues() {
 		if (currentSub != null) {
 			((TextView) findViewById(R.id.editsite_name)).setText(currentSub.name);
 			((TextView) findViewById(R.id.editsite_url)).setText(currentSub.url);
@@ -53,6 +48,7 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 		setContentView(R.layout.edit_subscription);
 
 		currentSub = null;
+		FileSubscriptionHelper subscriptionHelper = new FileSubscriptionHelper(getConfig());
 
 		findViewById(R.id.saveEditSite).setOnClickListener(v -> {
 			String name = ((TextView) findViewById(R.id.editsite_name)).getText().toString();
@@ -83,11 +79,11 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 			Subscription newSub = new Subscription(name, url, max, orderingPreference, enabled, priority);
 			if (currentSub != null) {
 				// edit:
-				contentService.editSubscription(currentSub, newSub);
+				subscriptionHelper.editSubscription(currentSub, newSub);
 
 			} else {
 				// add:
-				contentService.addSubscription(newSub);
+				subscriptionHelper.addSubscription(newSub);
 			} // endif
 
 			SubscriptionEdit.this.setResult(RESULT_OK);
@@ -110,7 +106,7 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 		
 		if (getIntent().hasExtra("focus")) {
 			findViewById(R.id.editsite_url).requestFocus();
-                }
+        }
 
 		if (getIntent().hasExtra("subscription")) {
 			currentSub = (Subscription) getIntent().getExtras().get(
@@ -126,7 +122,7 @@ public class SubscriptionEdit extends BaseActivity implements Runnable {
 			}
 		}
 
-
+		setCurrentSubValues();
 	}
 	
 	private void testUrl() {

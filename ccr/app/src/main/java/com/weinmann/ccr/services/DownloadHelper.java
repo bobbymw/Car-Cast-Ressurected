@@ -60,10 +60,11 @@ public class DownloadHelper implements Sayer {
     protected void downloadNewPodCasts(ContentService contentService) {
         try {
             DownloadHistory history = new DownloadHistory(mConfig);
+            FileSubscriptionHelper subscriptionHelper = new FileSubscriptionHelper(mConfig);
 
             say("Starting find/download new podcasts. CarCastResurrected ver " + CarCastResurrectedApplication.getVersion());
 
-            List<Subscription> sites = contentService.getSubscriptions();
+            List<Subscription> sites = subscriptionHelper.getSubscriptions();
 
             say("\nSearching " + sites.size() + " subscriptions. " + sdf.format(new Date()));
 

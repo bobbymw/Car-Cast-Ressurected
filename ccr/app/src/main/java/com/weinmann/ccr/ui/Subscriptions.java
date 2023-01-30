@@ -31,6 +31,7 @@ import com.weinmann.ccr.core.ExternalMediaStatus;
 import com.weinmann.ccr.core.Subscription;
 import com.weinmann.ccr.core.Util;
 import com.weinmann.ccr.services.DownloadHistory;
+import com.weinmann.ccr.services.FileSubscriptionHelper;
 
 /**
  * A good video about listview http://code.google.com/events/io/2010/sessions/world-of-listview-android.html
@@ -46,8 +47,9 @@ public class Subscriptions extends BaseActivity {
 	private static final String EDIT_SUBSCRIPTION = "Edit";
 	private static final String ERASE_SUBSCRIPTIONS_S_HISTORY = "Erase History";
 
-	SimpleAdapter listAdapter;
-	ListView listView;
+	private SimpleAdapter listAdapter;
+	private ListView listView;
+	private FileSubscriptionHelper mSubscriptionHelper;
 	private final List<Map<String, Object>> subscriptions = new ArrayList<>();
 
 	@Override
@@ -64,6 +66,7 @@ public class Subscriptions extends BaseActivity {
 			return;
 		}
 
+		mSubscriptionHelper = new FileSubscriptionHelper(getConfig());
 		listAdapter = new SimpleAdapter(this, subscriptions, R.layout.main_item_two_line_row2, new String[] { "name", "enabled" },
 				new int[] { R.id.text1, R.id.text2 });
 		listView.setAdapter(listAdapter);
@@ -90,13 +93,13 @@ public class Subscriptions extends BaseActivity {
 		Subscription sub = (Subscription) rowData.get("subscription");
 
 		if (item.getTitle().equals(DISABLE_SUBSCRIPTION) || item.getTitle().equals(ENABLE_SUBSCRIPTION)) {
-			contentService.toggleSubscription(sub);
+			mSubscriptionHelper.toggleSubscription(sub);
 			reloadSubscriptions();
 			Subscriptions.this.listAdapter.notifyDataSetChanged();
 			return true;
 
 		} else if (item.getTitle().equals(DELETE_SUBSCRIPTION)) {
-			contentService.deleteSubscription(sub);
+			mSubscriptionHelper.removeSubscription(sub);
 			Subscriptions.this.subscriptions.remove(info.position);
 			Subscriptions.this.listAdapter.notifyDataSetChanged();
 			return true;
@@ -149,7 +152,7 @@ public class Subscriptions extends BaseActivity {
 		if (item.getItemId() == R.id.deleteAllSubscriptions) {
 			new AlertDialog.Builder(Subscriptions.this).setIcon(android.R.drawable.ic_dialog_alert).setMessage("Delete All Subscriptions?")
 					.setPositiveButton("Delete", (dialog, which) -> {
-						contentService.deleteAllSubscriptions();
+						mSubscriptionHelper.deleteAllSubscriptions();
 						reloadSubscriptions();
 					}).setNegativeButton("Cancel", null).show();
 		}
@@ -157,7 +160,7 @@ public class Subscriptions extends BaseActivity {
 			new AlertDialog.Builder(Subscriptions.this).setIcon(android.R.drawable.ic_dialog_alert)
 					.setMessage("Reset to Demo Subscriptions (will delete all current subscriptions)?")
 					.setPositiveButton("Reset to Demos", (dialog, which) -> {
-						contentService.resetToDemoSubscriptions();
+						mSubscriptionHelper.resetToDemoSubscriptions();
 						reloadSubscriptions();
 					}).setNegativeButton("Cancel", null).show();
 			return true;
@@ -180,10 +183,7 @@ public class Subscriptions extends BaseActivity {
 		subscriptions.clear();
 
 		// If we have no content service... then game over... cant display anything
-		List<Subscription> sites = new ArrayList<>();
-		if (contentService != null) {
-			sites = getSubscriptions();
-		}
+		List<Subscription> sites = sites = mSubscriptionHelper.getSubscriptions();
 		// sort sites by name:
 		Collections.sort(sites);
 
@@ -209,7 +209,7 @@ public class Subscriptions extends BaseActivity {
 
             tempFile = new File(Environment.getExternalStorageDirectory(),"/CarCastResurrected.opml");
             FileOutputStream opmlFile = new FileOutputStream(tempFile);
-			contentService.exportOPML(opmlFile);
+			mSubscriptionHelper.exportOPML(opmlFile);
             opmlFile.close();
 		} catch (Exception ex) {
 			Util.toast(this, "Problem creating temporary file\n"+ex.getMessage());
