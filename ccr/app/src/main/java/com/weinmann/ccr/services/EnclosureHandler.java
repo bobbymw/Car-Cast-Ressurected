@@ -51,7 +51,7 @@ public class EnclosureHandler extends DefaultHandler {
 	}
 
 	@Override
-	public void characters(char[] ch, int start, int length) throws SAXException {
+	public void characters(char[] ch, int start, int length) {
 		if (needTitle && startTitle) {
 			title += new String(ch, start, length);
 		}
@@ -111,7 +111,7 @@ public class EnclosureHandler extends DefaultHandler {
 	}
 
 	@Override
-	public void startElement(String namespaceURI, String localName, String qName, Attributes attrs) throws SAXException {
+	public void startElement(String namespaceURI, String localName, String qName, Attributes attrs) {
 
 		// This grabs the first title and uses it as the feed title
 		if (needTitle && localName.equals("title")) {
@@ -119,6 +119,7 @@ public class EnclosureHandler extends DefaultHandler {
 		}
 
 		if (localName.equals("title")) {
+			lastTitle = "";
 			grabTitle = true;
 		} else if (localName.equals("item")) {
 			lastTitle = "";
@@ -200,6 +201,4 @@ public class EnclosureHandler extends DefaultHandler {
 		}
 		return "application/octet-stream";
 	}
-
-	 
 }
