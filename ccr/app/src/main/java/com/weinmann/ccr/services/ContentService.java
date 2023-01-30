@@ -117,11 +117,15 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
                                 pauseOrPlay();
                                 return true;
                             case KeyEvent.KEYCODE_MEDIA_PLAY:
-                                play();
+                                if (!isPlaying()) {
+                                    play();
+                                }
                                 return true;
                             case KeyEvent.KEYCODE_MEDIA_PAUSE:
                             case KeyEvent.KEYCODE_MEDIA_STOP:
-                                pauseNow();
+                                if (isPlaying()) {
+                                    pauseNow();
+                                }
                                 return true;
                             case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
                                 previous();
@@ -632,18 +636,16 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     private void play() {
         try {
-            if (isPlaying()) {
-                return;
-            }
-
             if (!fullReset())
                 return;
 
             tryToGetAudioFocus();
 
-            mediaPlayer.start();
-            mediaMode = MediaMode.Playing;
-            mMediaSessionCompat.setActive(true);
+            if (!isPlaying()) {
+                mediaPlayer.start();
+                mediaMode = MediaMode.Playing;
+                mMediaSessionCompat.setActive(true);
+            }
 
             notifyPlayPause();
             saveState();
