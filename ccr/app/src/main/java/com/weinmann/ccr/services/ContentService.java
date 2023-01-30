@@ -139,7 +139,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
     };
 
-    public void resetMediaPlayer() {
+    public void initMediaPlayer() {
         try {
             if (mediaPlayer == null) {
                 mediaPlayer = new MediaPlayer();
@@ -507,7 +507,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
                 super.onCallStateChanged(state, incomingNumber);
 
                 if (state == TelephonyManager.CALL_STATE_OFFHOOK || state == TelephonyManager.CALL_STATE_RINGING) {
-                    // It's possible that this listener is registered before the resetMediaPlayer
+                    // It's possible that this listener is registered before the initMediaPlayer
                     // method is called, which establishes the MediaPlayer instance.
                     if (isPlaying()) {
                         mPauseReason = PauseReason.PhoneCall;
@@ -632,16 +632,18 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     private void play() {
         try {
+            if (isPlaying()) {
+                return;
+            }
+
             if (!fullReset())
                 return;
 
             tryToGetAudioFocus();
 
-            if (!isPlaying()) {
-                mediaPlayer.start();
-                mediaMode = MediaMode.Playing;
-                mMediaSessionCompat.setActive(true);
-            }
+            mediaPlayer.start();
+            mediaMode = MediaMode.Playing;
+            mMediaSessionCompat.setActive(true);
 
             notifyPlayPause();
             saveState();

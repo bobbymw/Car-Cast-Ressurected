@@ -231,7 +231,7 @@ public class CarCastResurrectedApplication extends Application {
             Log.i("CarCast", "onServiceConnected; CN is " + name + "; binder is " + iService);
             if (name.getClassName().equals(ContentService.class.getName())) {
                 contentService = ((LocalBinder) iService).getService();
-                contentService.resetMediaPlayer();
+                contentService.initMediaPlayer();
                 contentServiceListener.onContentServiceChanged(contentService);
             }
         }
