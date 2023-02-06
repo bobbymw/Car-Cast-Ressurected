@@ -31,7 +31,6 @@ import androidx.core.text.HtmlCompat;
 import com.weinmann.ccr.R;
 import com.weinmann.ccr.core.CarCastResurrectedApplication;
 import com.weinmann.ccr.core.Util;
-import com.weinmann.ccr.services.ContentService;
 import com.weinmann.ccr.services.DownloadHistory;
 import com.weinmann.ccr.services.MetaFile;
 import com.weinmann.ccr.services.MetaHolder;
@@ -128,14 +127,14 @@ public class PodcastList extends BaseActivity {
 
 		if (item.getItemId() == R.id.deleteListenedTo) {
 			String currTitle = "";
-			currTitle = contentService.currentTitle();
+			currTitle = contentService.getCurrentTitle();
 			MetaHolder metaHolder = new MetaHolder(getConfig());
 			for (int i = metaHolder.getSize() - 1; i >= 0; i--) {
 				MetaFile metaFile = metaHolder.get(i);
 				if (currTitle.equals(metaFile.getTitle())) {
 					continue;
 				}
-				if (metaFile.getDuration() <= 0) {
+				if (metaFile.getDurationMs() <= 0) {
 					continue;
 				}
 				if (metaFile.isListenedTo()) {
@@ -180,7 +179,7 @@ public class PodcastList extends BaseActivity {
 		for (int i = 0; i < metaHolder.getSize(); i++) {
 			MetaFile metaFile = metaHolder.get(i);
 			HashMap<String, String> item = new HashMap<>();
-			if (contentService.currentTitle().equals(metaFile.getTitle())) {
+			if (contentService.getCurrentTitle().equals(metaFile.getTitle())) {
 				if (contentService.isPlaying()) {
 					item.put("line1", "> " + metaFile.getFeedName());
 				} else {
@@ -189,14 +188,14 @@ public class PodcastList extends BaseActivity {
 			} else {
 				item.put("line1", metaFile.getFeedName());
 			}
-			String time = ContentService.getTimeString(metaFile.getCurrentPos()) + "-"
-					+ ContentService.getTimeString(metaFile.getDuration());
-			if (metaFile.getCurrentPos() == 0 && metaFile.getDuration() == -1) {
+			String time = Util.getTimeString(metaFile.getCurrentPosMs()) + "-"
+					+ Util.getTimeString(metaFile.getDurationMs());
+			if (metaFile.getCurrentPosMs() == 0 && metaFile.getDurationMs() == -1) {
 				time = "";
 			}
 			if (metaFile.isListenedTo()) {
 				item.put("listened", "true");
-				time = "End" + "-" + ContentService.getTimeString(metaFile.getDuration());
+				time = "End" + "-" + Util.getTimeString(metaFile.getDurationMs());
 			}
 			item.put("description", metaFile.getDescription());
 			item.put("xx:xx-xx:xx", time);
@@ -290,7 +289,7 @@ public class PodcastList extends BaseActivity {
 		MetaHolder metaHolder = new MetaHolder(getConfig());
 		MetaFile metaFile = metaHolder.get(tag.position);
 
-		if (metaFile.getTitle().equals(contentService.currentTitle())) {
+		if (metaFile.getTitle().equals(contentService.getCurrentTitle())) {
 			contentService.pauseOrPlay();
 		} else {
 			// This saves our position

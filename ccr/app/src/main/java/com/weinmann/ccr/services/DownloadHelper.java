@@ -96,7 +96,7 @@ public class DownloadHelper implements Sayer {
                         String message = sitesScanned + "/" + sites.size() + ": " + name + ", "
                                 + (enclosureHandler.metaNets.size() - foundStart) + " new";
                         say(message);
-                        contentService.updateNotification(message);
+                        contentService.updateDownloadNotification(message);
 
                     } catch (Throwable e) {
 					/* Display any Error to the GUI. */
@@ -125,7 +125,7 @@ public class DownloadHelper implements Sayer {
                 newPodcasts.add(metaNet);
             }
             say(newPodcasts.size() + " podcasts will be downloaded.");
-            contentService.updateNotification(newPodcasts.size() + " podcasts will be downloaded.");
+            contentService.updateDownloadNotification(newPodcasts.size() + " podcasts will be downloaded.");
 
             totalPodcasts = newPodcasts.size();
             for (MetaNet metaNet : newPodcasts) {
@@ -141,7 +141,7 @@ public class DownloadHelper implements Sayer {
                 String shortName = newPodcasts.get(i).getTitle();
                 String localFileExt = getLocalFileExtFromMimetype(newPodcasts.get(i).getMimetype());
                 say((i + 1) + "/" + newPodcasts.size() + " " + shortName);
-                contentService.updateNotification((i + 1) + "/" + newPodcasts.size() + " " + shortName);
+                contentService.updateDownloadNotification((i + 1) + "/" + newPodcasts.size() + " " + shortName);
                 podcastsDownloaded = i + 1;
 
                 try {
@@ -163,8 +163,8 @@ public class DownloadHelper implements Sayer {
                                  */
 
                     if (newPodcasts.get(i).getPriority())
-                        if (contentService.currentMeta() != null)
-                            prefix = contentService.currentMeta().getBaseFilename() + ":00:";
+                        if (contentService.getCurrentMeta() != null)
+                            prefix = contentService.getCurrentMeta().getBaseFilename() + ":00:";
 
                     String castFileName = prefix + System.currentTimeMillis() + localFileExt;
                     File castFile = mConfig.getPodcastRootPath(castFileName);

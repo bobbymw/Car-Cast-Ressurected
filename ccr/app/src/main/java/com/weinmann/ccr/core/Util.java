@@ -96,6 +96,13 @@ public class Util {
 		return "UTF-8";
 	}
 
+	public static String getTimeString(int ms) {
+		int min = ms / (1000 * 60);
+		int sec = (ms - (min * 60 * 1000)) / 1000;
+		String result = String.format("%02d:%02d", min, sec);
+		return result;
+	}
+
 	private static HttpURLConnection openConnection(String url) throws IOException {
 		HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
 		connection.setRequestProperty("User-Agent", "carcastresurrected");

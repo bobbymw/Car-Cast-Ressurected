@@ -27,6 +27,10 @@ public class NotificationHelper {
 
     private final ContentService mContext;
     private NotificationChannel mChannel;
+    private NotificationCompat.Action mPrevTrackAction;
+    private NotificationCompat.Action mRewindAction;
+    private NotificationCompat.Action mFastForwardAction;
+    private NotificationCompat.Action mNextTrackAction;
     private boolean isForegroundServiceRunning = false;
 
     public NotificationHelper(ContentService context) {
@@ -72,24 +76,29 @@ public class NotificationHelper {
         NotificationManagerCompat.from(mContext).notify(notificationId, notification);
     }
 
-    public void notifyPlayPause(boolean play) {
+    public void notifyPlayPause(boolean play, int position, float speed) {
         MediaSessionCompat mediaSessionCompat = mContext.getMediaSessionCompat();
+
+        updatePlaybackState(play, position, speed, mediaSessionCompat);
+
         int nextActionIcon = play ? android.R.drawable.ic_media_pause : android.R.drawable.ic_media_play;
         String nextActionText = play ? "Pause" : "Play";
+        NotificationCompat.Action nextAction = createMediaAction(nextActionIcon, nextActionText, PlaybackStateCompat.ACTION_PLAY_PAUSE);
 
         initialize();
 
         MediaSessionCompat.Token token = mediaSessionCompat.getSessionToken();
 
         NotificationCompat.Builder builder = MediaStyleHelper.from(mContext, mContext.getMediaSessionCompat());
-        addMediaAction(builder, nextActionIcon, nextActionText, PlaybackStateCompat.ACTION_PLAY_PAUSE);
-        addMediaAction(builder, android.R.drawable.ic_media_previous, "Prev", PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS);
-        addMediaAction(builder, android.R.drawable.ic_media_rew, "Rew", PlaybackStateCompat.ACTION_REWIND);
-        addMediaAction(builder, android.R.drawable.ic_media_ff, "FF", PlaybackStateCompat.ACTION_FAST_FORWARD);
-        addMediaAction(builder, android.R.drawable.ic_media_next, "Next", PlaybackStateCompat.ACTION_SKIP_TO_NEXT);
+        builder.addAction(mPrevTrackAction);
+        builder.addAction(mRewindAction);
+        builder.addAction(nextAction);
+        builder.addAction(mFastForwardAction);
+        builder.addAction(mNextTrackAction);
 
         builder.setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
-               .setShowActionsInCompactView(0).setMediaSession(token));
+                   .setShowActionsInCompactView(1, 2, 3)
+                   .setMediaSession(token));
         builder.setSmallIcon(R.drawable.ccp_launcher);
         builder.setChannelId(mChannel.getId());
 
@@ -103,9 +112,16 @@ public class NotificationHelper {
         }
     }
 
-    private void addMediaAction(NotificationCompat.Builder builder, int actionIcon, String actionText, long action) {
-        builder.addAction(new NotificationCompat.Action(actionIcon, actionText,
-                MediaButtonReceiver.buildMediaButtonPendingIntent(mContext, action)));
+    private void updatePlaybackState(boolean play, int position, float speed, MediaSessionCompat mediaSessionCompat) {
+        int playbackState = play ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED;
+        PlaybackStateCompat.Builder playbackStateCompatBuilder = new PlaybackStateCompat.Builder().setState(playbackState, position, speed);
+        PlaybackStateCompat playbackStateCompat = playbackStateCompatBuilder.build();
+        mediaSessionCompat.setPlaybackState(playbackStateCompat);
+    }
+
+    private NotificationCompat.Action createMediaAction(int actionIcon, String actionText, long action) {
+        return new NotificationCompat.Action(actionIcon, actionText,
+                MediaButtonReceiver.buildMediaButtonPendingIntent(mContext, action));
     }
 
     private void initialize() {
@@ -116,6 +132,11 @@ public class NotificationHelper {
             mChannel.enableVibration(false);
 
             notificationManager.createNotificationChannel(mChannel);
+
+            mPrevTrackAction = createMediaAction(android.R.drawable.ic_media_previous, "Prev", PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS);
+            mRewindAction = createMediaAction(android.R.drawable.ic_media_rew, "Rew", PlaybackStateCompat.ACTION_REWIND);
+            mFastForwardAction = createMediaAction(android.R.drawable.ic_media_ff, "FF", PlaybackStateCompat.ACTION_FAST_FORWARD);
+            mNextTrackAction = createMediaAction(android.R.drawable.ic_media_next, "Next", PlaybackStateCompat.ACTION_SKIP_TO_NEXT);
         }
     }
 }

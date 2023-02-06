@@ -36,6 +36,14 @@ public class MetaHolder {
 		metas.remove(i);
 	}
 
+	public void purgeAll() {
+		for (MetaFile metafile:metas) {
+			metafile.delete();
+		}
+
+		metas.clear();
+	}
+
 	public MetaFile get(int current) {
 		return metas.get(current);
 	}
