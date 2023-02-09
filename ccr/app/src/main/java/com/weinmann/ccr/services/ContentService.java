@@ -7,7 +7,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioManager;
@@ -19,7 +18,6 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
-import android.preference.PreferenceManager;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.telephony.PhoneStateListener;
@@ -46,7 +44,8 @@ import java.util.SortedSet;
 
 public class ContentService extends Service implements MediaPlayer.OnCompletionListener, MusicFocusable {
     private final IBinder binder = new LocalBinder();
-    private final NotificationHelper mNotificationHelper = new NotificationHelper(this);
+    private final MediaNotificationHelper mMediaNotificationHelper = new MediaNotificationHelper(this);
+    private final DownloadNotificationHelper mDownloadNotificationHelper = new DownloadNotificationHelper(this);
     int currentPodcastInPlayer = -1;
     private DownloadHelper downloadHelper;
     private Location location;
@@ -287,13 +286,11 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             e.printStackTrace();
         }
 
-        SharedPreferences app_preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        if (got == 0 && !app_preferences.getBoolean("notifyOnZeroDownloads", true)) {
-            mNotificationHelper.cancel(NotificationHelper.DOWNLOAD_NOTIFICATION_ID);
+        if (got == 0 && !getConfig().getNotifyOnZeroDownloads()) {
+            mDownloadNotificationHelper.cancel();
         } else {
 
-            mNotificationHelper.notify(NotificationHelper.DOWNLOAD_NOTIFICATION_ID, R.drawable.icon2,
-                                  "Downloads Finished", "Downloaded " + got + " podcasts.");
+            mDownloadNotificationHelper.notify(R.drawable.icon2, "Downloads Finished", "Downloaded " + got + " podcasts.");
         }
 
         metaHolder = new MetaHolder(getConfig(), getCurrentFile());
@@ -430,7 +427,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         getCurrentMeta().setCurrentPosMs(0);
         getCurrentMeta().setListenedTo();
         getCurrentMeta().save();
-        if (PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).getBoolean("autoPlayNext", true)) {
+        if (getConfig().getAutoPlayNext()) {
             next(true);
         } else {
             disableNotification();
@@ -677,7 +674,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
 
         Log.w("CarCastResurrected", "startDownloadingNewPodCasts");
-        boolean autoDelete = PreferenceManager.getDefaultSharedPreferences(this).getBoolean("autoDelete", false);
+        boolean autoDelete = getConfig().getAutoDelete();
         if (autoDelete) {
             for (int i = metaHolder.getSize() - 1; i >= 0; i--) {
                 MetaFile metaFile = metaHolder.get(i);
@@ -799,9 +796,8 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public void updateDownloadNotification(String update) {
-        mNotificationHelper.cancel(NotificationHelper.DOWNLOAD_NOTIFICATION_ID);
-        mNotificationHelper.notify(NotificationHelper.DOWNLOAD_NOTIFICATION_ID, R.drawable.iconbusy,
-                              "Downloading started", update);
+        mDownloadNotificationHelper.cancel();
+        mDownloadNotificationHelper.notify(R.drawable.iconbusy, "Downloading started", update);
     }
 
     public boolean isPlaying() {
@@ -842,7 +838,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     private WakeLock partialWakeLock;
 
     void disableNotification() {
-        NotificationManagerCompat.from(this).cancel(NotificationHelper.PLAYING_NOTIFICATION_ID);
+        mMediaNotificationHelper.cancel();
         stopForeground(true);
 
         partialWakeLock.release();
@@ -852,7 +848,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         float speed = getConfig().getSpeedChoice();
         partialWakeLock.acquire(60*1000L /*1 minute*/);
         updateMediaSessionMetadata();
-        mNotificationHelper.notifyPlayPause(isPlaying(), getCurrentPositionMs(), speed);
+        mMediaNotificationHelper.notifyPlayPause(isPlaying(), getCurrentPositionMs(), speed);
     }
 
     public SortedSet<Integer> moveTop(SortedSet<Integer> checkedItems) {

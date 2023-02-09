@@ -54,6 +54,21 @@ public class Config {
         return value;
     }
 
+    public boolean getNotifyOnZeroDownloads() {
+        boolean value = getValueOrSetDefault("notifyOnZeroDownloads", true);
+        return value;
+    }
+
+    public boolean getAutoPlayNext() {
+        boolean value = getValueOrSetDefault("autoPlayNext", true);
+        return value;
+    }
+
+    public boolean getAutoDelete() {
+        boolean value = getValueOrSetDefault("autoDelete", false);
+        return value;
+    }
+
     public String getLastRun() {
         SharedPreferences app_preferences = PreferenceManager.getDefaultSharedPreferences(context);
         String value = app_preferences.getString("lastRun", null); // no default

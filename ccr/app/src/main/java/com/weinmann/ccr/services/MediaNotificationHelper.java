@@ -18,11 +18,10 @@ import androidx.media.session.MediaButtonReceiver;
 import com.weinmann.ccr.R;
 import com.weinmann.ccr.ui.CarCastResurrected;
 
-public class NotificationHelper {
+public class MediaNotificationHelper {
 
     public static final int IMPORTANCE = NotificationManager.IMPORTANCE_MIN;
     public static final String NOTIFICATION_CHANNEL_ID = "10001";
-    public static final int DOWNLOAD_NOTIFICATION_ID = 22;
     public static final int PLAYING_NOTIFICATION_ID = 23;
 
     private final ContentService mContext;
@@ -33,7 +32,7 @@ public class NotificationHelper {
     private NotificationCompat.Action mNextTrackAction;
     private boolean isForegroundServiceRunning = false;
 
-    public NotificationHelper(ContentService context) {
+    public MediaNotificationHelper(ContentService context) {
         mContext = context;
     }
 
@@ -61,19 +60,9 @@ public class NotificationHelper {
         return builder;
     }
 
-    public void cancel(int notificationId)
+    public void cancel()
     {
-        NotificationManager notificationManager = (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.cancel(notificationId);
-    }
-
-    /**
-     * Create and push the notification
-     */
-    public void notify(int notificationId, int icon, String title, String message) {
-
-        Notification notification = setupBuilder(icon, title, message).build();
-        NotificationManagerCompat.from(mContext).notify(notificationId, notification);
+        NotificationManagerCompat.from(mContext).cancel(PLAYING_NOTIFICATION_ID);
     }
 
     public void notifyPlayPause(boolean play, int position, float speed) {
@@ -106,9 +95,9 @@ public class NotificationHelper {
 
         if (!isForegroundServiceRunning) {
             isForegroundServiceRunning = true;
-            mContext.startForeground(NotificationHelper.PLAYING_NOTIFICATION_ID, notification);
+            mContext.startForeground(MediaNotificationHelper.PLAYING_NOTIFICATION_ID, notification);
         } else {
-            NotificationManagerCompat.from(mContext).notify(NotificationHelper.PLAYING_NOTIFICATION_ID, notification);
+            NotificationManagerCompat.from(mContext).notify(MediaNotificationHelper.PLAYING_NOTIFICATION_ID, notification);
         }
     }
 
