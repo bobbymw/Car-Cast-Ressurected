@@ -3,7 +3,6 @@ package com.weinmann.ccr.services;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.Properties;
 
 import android.media.MediaPlayer;
@@ -14,9 +13,9 @@ import android.util.Log;
  */
 public class MetaFile {
 
-	final File file;
-	Properties properties = new Properties();
-        private static final String defaultBaseFilename = "0";
+	public final File file;
+	private Properties properties = new Properties();
+	private static final String defaultBaseFilename = "0";
 	
 	String getFilename(){
 		return file.getName();
@@ -27,9 +26,8 @@ public class MetaFile {
 
 		File metaFile = getMetaPropertiesFile();
 		if (metaFile.exists()) {
-			try {
-				properties.load(new FileInputStream(metaFile));
-				// Log.i("metafile", properties.toString());
+			try (FileInputStream fis = new FileInputStream(metaFile)) {
+				properties.load(fis);
 			} catch (Exception e) {
 				Log.e("Meta", "Can't load properties");
 			}
@@ -134,21 +132,11 @@ public class MetaFile {
 	}
 
 	public void save() {
-		FileOutputStream fos = null;
-		try {
-			fos = new FileOutputStream(getMetaPropertiesFile());
-			properties.save(fos, "");
+		try (FileOutputStream fos = new FileOutputStream(getMetaPropertiesFile())) {
+			properties.store(fos, "");
 		} catch (Throwable e) {
 			Log.e("MetaFile", "saving meta data", e);
-		} finally {
-			if (fos != null) {
-				try {
-					fos.close();
-				} catch (IOException io) {
-				}
-			}
 		}
-
 	}
 
 	public void setCurrentPosMs(int msec) {
@@ -175,5 +163,4 @@ public class MetaFile {
 	public String getDescription(){
 		return properties.getProperty("description");
 	}
-
 }

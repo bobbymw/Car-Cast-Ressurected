@@ -126,22 +126,8 @@ public class PodcastList extends BaseActivity {
 	public boolean onMenuItemSelected(int featureId, MenuItem item) {
 
 		if (item.getItemId() == R.id.deleteListenedTo) {
-			String currTitle = "";
-			currTitle = contentService.getCurrentTitle();
 			MetaHolder metaHolder = new MetaHolder(getConfig());
-			for (int i = metaHolder.getSize() - 1; i >= 0; i--) {
-				MetaFile metaFile = metaHolder.get(i);
-				if (currTitle.equals(metaFile.getTitle())) {
-					continue;
-				}
-				if (metaFile.getDurationMs() <= 0) {
-					continue;
-				}
-				if (metaFile.isListenedTo()) {
-					contentService.deletePodcast(i);
-					list.remove(i);
-				}
-			}
+			metaHolder.deleteListenedTo();
 			podcastsAdapter.notifyDataSetChanged();
 
 		} else if (item.getItemId() == R.id.deleteAllPodcasts) {

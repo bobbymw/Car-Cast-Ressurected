@@ -26,7 +26,6 @@ import android.util.Log;
 import android.view.KeyEvent;
 
 import androidx.annotation.NonNull;
-import androidx.core.app.NotificationManagerCompat;
 import androidx.media.session.MediaButtonReceiver;
 
 import com.weinmann.ccr.R;
@@ -46,7 +45,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     private final IBinder binder = new LocalBinder();
     private final MediaNotificationHelper mMediaNotificationHelper = new MediaNotificationHelper(this);
     private final DownloadNotificationHelper mDownloadNotificationHelper = new DownloadNotificationHelper(this);
-    int currentPodcastInPlayer = -1;
     private DownloadHelper downloadHelper;
     private Location location;
     private MediaMode mediaMode = MediaMode.UnInitialized;
@@ -162,7 +160,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public void bumpForwardSeconds(int seconds) {
-        if (getCurrentMeta() == null) {
+        if (metaHolder.getCurrentMeta() == null) {
             return;
         }
 
@@ -188,20 +186,17 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
 
         mediaPlayer.seekTo(ms);
-        getCurrentMeta().setCurrentPosMs(ms);
-        getCurrentMeta().save();
+        metaHolder.getCurrentMeta().setCurrentPosMs(ms);
+        metaHolder.getCurrentMeta().save();
         notifyPlayPause();
     }
 
     public MetaFile getCurrentMeta() {
-        if (metaHolder.getSize() == 0) return null;
-        if (currentPodcastInPlayer == -1) return null;
-        if (metaHolder.getSize() <= currentPodcastInPlayer) return null;
-        return metaHolder.get(currentPodcastInPlayer);
+        return metaHolder.getCurrentMeta();
     }
 
     private int getCurrentDurationMs() {
-        MetaFile metaFile = getCurrentMeta();
+        MetaFile metaFile = metaHolder.getCurrentMeta();
         if (metaFile == null) {
             return 0;
         }
@@ -217,12 +212,12 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public File getCurrentFile() {
-        MetaFile meta = getCurrentMeta();
+        MetaFile meta = metaHolder.getCurrentMeta();
         return meta == null ? null : meta.file;
     }
 
     private int getCurrentPositionMsFromMeta() {
-        MetaFile meta = getCurrentMeta();
+        MetaFile meta = metaHolder.getCurrentMeta();
         return meta == null ? 0 : meta.getCurrentPosMs();
     }
 
@@ -246,28 +241,21 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public String getCurrentTitle() {
-        if (currentPodcastInPlayer >= metaHolder.getSize()) {
+        if (metaHolder.getSize() > 0) {
             if (isDownloading()) {
                 return "Downloading podcasts\n" + downloadHelper.getStatus();
             }
-            return "No podcasts loaded.\nUse 'Menu' and 'Download Podcasts'";
         }
-        return getCurrentMeta().getTitle();
+
+        return metaHolder.getCurrentTitle();
     }
 
     public void deletePodcast(int position) {
-        if (isPlaying() && currentPodcastInPlayer == position) {
+        if (isPlaying() && metaHolder.getCurrentPodcastInPlayer() == position) {
             pauseNow();
         }
 
         metaHolder.delete(position);
-        if (currentPodcastInPlayer >= metaHolder.getSize()) {
-            if (currentPodcastInPlayer > 0)
-                currentPodcastInPlayer--;
-        }
-        // If we are playing something after what's deleted, adjust the current
-        if (currentPodcastInPlayer > position)
-            currentPodcastInPlayer--;
 
         try {
             fullReset();
@@ -294,9 +282,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
 
         metaHolder = new MetaHolder(getConfig(), getCurrentFile());
-        if (currentPodcastInPlayer >= metaHolder.getSize()) {
-            currentPodcastInPlayer = 0;
-        }
     }
 
     public String encodedDownloadStatus() {
@@ -308,9 +293,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     private boolean fullReset() {
-        if (currentPodcastInPlayer >= metaHolder.getSize())
-            return false;
-
         loadPlayerFromCurrentMeta();
         mediaPlayer.setOnCompletionListener(this);
         return true;
@@ -329,10 +311,8 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public String getCurrentSubscriptionName() {
-        if (currentPodcastInPlayer >= metaHolder.getSize()) {
-            return "";
-        }
-        return getCurrentMeta().getFeedName();
+        MetaFile currentMeta = metaHolder.getCurrentMeta();
+        return currentMeta == null ? "" : currentMeta.getFeedName();
     }
 
     public String getDurationString() {
@@ -343,8 +323,8 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         if (isPlaying()) {
             return Util.getTimeString(mediaPlayer.getCurrentPosition());
         }
-        if (getCurrentMeta() != null)
-            return Util.getTimeString(getCurrentMeta().getCurrentPosMs());
+        if (metaHolder.getCurrentMeta() != null)
+            return Util.getTimeString(metaHolder.getCurrentMeta().getCurrentPosMs());
         return "";
     }
 
@@ -357,7 +337,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         if (metaHolder.getSize() == 0)
             sb.append('0');
         else
-            sb.append(currentPodcastInPlayer + 1);
+            sb.append(metaHolder.getCurrentPodcastInPlayer() + 1);
         sb.append('/');
         sb.append(metaHolder.getSize());
         return sb.toString();
@@ -374,8 +354,8 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     public void next() {
         boolean isPlaying = mediaPlayer.isPlaying();
         if (isPlaying) {
-            getCurrentMeta().setCurrentPosMs(mediaPlayer.getCurrentPosition());
-            getCurrentMeta().save();
+            metaHolder.getCurrentMeta().setCurrentPosMs(mediaPlayer.getCurrentPosition());
+            metaHolder.getCurrentMeta().save();
             mediaPlayer.stop();
         }
         next(isPlaying);
@@ -390,8 +370,9 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     private void next(boolean wasPlaying) {
         mediaMode = MediaMode.UnInitialized;
 
+        boolean positionWasSet = metaHolder.setCurrentMeta(metaHolder.getCurrentPodcastInPlayer() + 1);
         // if we are at end.
-        if (currentPodcastInPlayer + 1 >= metaHolder.getSize()) {
+        if (!positionWasSet) {
             saveState();
             // activity.disableJumpButtons();
             mediaPlayer.reset();
@@ -399,8 +380,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             notifyPlayPause();
             return;
         }
-
-        currentPodcastInPlayer++;
 
         if (wasPlaying)
             play();
@@ -422,11 +401,11 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     @Override
     public void onCompletion(MediaPlayer mp) {
-        if (getCurrentMeta() == null)
+        if (metaHolder.getCurrentMeta() == null)
             return;
-        getCurrentMeta().setCurrentPosMs(0);
-        getCurrentMeta().setListenedTo();
-        getCurrentMeta().save();
+        metaHolder.getCurrentMeta().setCurrentPosMs(0);
+        metaHolder.getCurrentMeta().setListenedTo();
+        metaHolder.getCurrentMeta().save();
         if (getConfig().getAutoPlayNext()) {
             next(true);
         } else {
@@ -445,9 +424,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         initPhoneStateHandling();
 
         metaHolder = new MetaHolder(getConfig());
-
-        // restore state;
-        currentPodcastInPlayer = 0;
 
         restoreState();
 
@@ -517,7 +493,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, getCurrentSubscriptionName());
         metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_TITLE, title);
         metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, getCurrentDurationMs());
-        metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, currentPodcastInPlayer + 1);
+        metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, metaHolder.getCurrentPodcastInPlayer() + 1);
         metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, metaHolder.getSize());
 
         mMediaSessionCompat.setMetadata(metadataBuilder.build());
@@ -560,8 +536,8 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         if (isPlaying()) {
 
             // Save current position
-            getCurrentMeta().setCurrentPosMs(mediaPlayer.getCurrentPosition());
-            getCurrentMeta().save();
+            metaHolder.getCurrentMeta().setCurrentPosMs(mediaPlayer.getCurrentPosition());
+            metaHolder.getCurrentMeta().save();
 
             mediaPlayer.pause();
             mediaMode = MediaMode.Paused;
@@ -614,8 +590,12 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         if (isPlaying()) {
             mediaPlayer.stop();
         }
-        currentPodcastInPlayer = position;
-        play();
+
+        boolean positionWasSet = metaHolder.setCurrentMeta(position);
+
+        if (positionWasSet) {
+            play();
+        }
     }
 
     public void previous() {
@@ -625,11 +605,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
         mediaMode = MediaMode.UnInitialized;
 
-        if (currentPodcastInPlayer > 0) {
-            currentPodcastInPlayer--;
-        }
-        if (currentPodcastInPlayer >= metaHolder.getSize())
-            return;
+        wasPlaying = metaHolder.setCurrentMeta(metaHolder.getCurrentPodcastInPlayer() - 1);
 
         if (wasPlaying) {
             play();
@@ -676,18 +652,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         Log.w("CarCastResurrected", "startDownloadingNewPodCasts");
         boolean autoDelete = getConfig().getAutoDelete();
         if (autoDelete) {
-            for (int i = metaHolder.getSize() - 1; i >= 0; i--) {
-                MetaFile metaFile = metaHolder.get(i);
-                if (getCurrentTitle().equals(metaFile.getTitle())) {
-                    continue;
-                }
-                if (metaFile.getDurationMs() <= 0) {
-                    continue;
-                }
-                if (metaFile.isListenedTo()) {
-                    deletePodcast(i);
-                }
-            }
+            metaHolder.deleteListenedTo();
         }
 
         updateDownloadNotification("Downloading podcasts started");
@@ -761,14 +726,9 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             if (location == null) {
                 return;
             }
-            boolean found = false;
-            for (int i = 0; i < metaHolder.getSize(); i++) {
-                if (metaHolder.get(i).getTitle().equals(location.title)) {
-                    currentPodcastInPlayer = i;
-                    found = true;
-                    break;
-                }
-            }
+
+            boolean found = metaHolder.setCurrentMetaByTitle(location.title);
+
             if (!found) {
                 location = null;
                 return;
@@ -788,7 +748,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         } catch (IOException ex) {
             //no-op
         }
-        mediaPlayer.seekTo(getCurrentMeta().getCurrentPosMs());
+        mediaPlayer.seekTo(metaHolder.getCurrentMeta().getCurrentPosMs());
         if (isPlaying()) {
             mediaPlayer.pause();
         }
@@ -818,7 +778,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         metaHolder.purgeAll();
 
         metaHolder = new MetaHolder(getConfig(), getCurrentFile());
-        currentPodcastInPlayer = 0;
     }
 
     public String getDownloadProgress() {

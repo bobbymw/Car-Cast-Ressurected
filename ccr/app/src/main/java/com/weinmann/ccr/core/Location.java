@@ -8,12 +8,10 @@ import java.util.Properties;
 
 public class Location {
 
-	public static Location load(File stateFile) throws IOException {
-		try {
+	public static Location load(File stateFile) {
+		try (FileInputStream fis = new FileInputStream(stateFile)) {
 			Properties prop = new Properties();
-			FileInputStream fis = new FileInputStream(stateFile);
 			prop.load(fis);
-			fis.close();
 
 			return new Location(prop.get("title").toString());
 		} catch (Throwable t) {
@@ -27,7 +25,7 @@ public class Location {
 		prop.setProperty("title", title);
 		// prop.setProperty("pos", Integer.toString(pos));
 		FileOutputStream fos = new FileOutputStream(stateFile);
-		prop.save(fos, "");
+		prop.store(fos, "");
 		fos.close();
 		return new Location(title);
 	}

@@ -1,6 +1,10 @@
 package com.weinmann.ccr.services;
 
-import java.io.DataInputStream;
+import android.util.Log;
+
+import com.weinmann.ccr.core.Config;
+import com.weinmann.ccr.core.Sayer;
+
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -10,12 +14,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
-
-import android.content.Context;
-import android.util.Log;
-
-import com.weinmann.ccr.core.Config;
-import com.weinmann.ccr.core.Sayer;
 
 /**
  * The history of all downloaded episodes the data is backed into a file on the SD-card
@@ -35,20 +33,9 @@ public class DownloadHistory implements Sayer {
     public DownloadHistory(Config config) {
         mConfig = config;
         File historyFile = mConfig.getPodcastRootPath("history.prop");
-        try {
-            DataInputStream dis = new DataInputStream(new FileInputStream(historyFile));
-            String line = dis.readLine();
-            if (!line.startsWith(HISTORY_TWO_HEADER)) {
-                // load old format.
-                historyEntries.add(new HistoryEntry(UNKNOWN_SUBSCRIPTION, line));
-                while ((line = dis.readLine()) != null) {
-                    historyEntries.add(new HistoryEntry(UNKNOWN_SUBSCRIPTION, line));
-                }
-            } else {
-                ObjectInputStream ois = new ObjectInputStream(dis);
+        try (FileInputStream historyFileStream = new FileInputStream(historyFile);
+                ObjectInputStream ois = new ObjectInputStream(historyFileStream)) {
                 historyEntries = (List<HistoryEntry>) ois.readObject();
-                ois.close();
-            }
         } catch (Throwable e) {
             // would be nice to ask the user if we can submit his history file
             // to the devs for review
@@ -117,13 +104,14 @@ public class DownloadHistory implements Sayer {
 
     private void save() {
         File historyFile = mConfig.getPodcastRootPath("history.prop");
-        try {
-            DataOutputStream dosDataOutputStream = new DataOutputStream(new FileOutputStream(historyFile));
+        try (FileOutputStream fos = new FileOutputStream(historyFile);
+             DataOutputStream dosDataOutputStream = new DataOutputStream(fos);
+             ObjectOutputStream oos = new ObjectOutputStream(dosDataOutputStream)) {
+
             dosDataOutputStream.write(HISTORY_TWO_HEADER.getBytes());
             dosDataOutputStream.write('\n');
-            ObjectOutputStream oos = new ObjectOutputStream(dosDataOutputStream);
+
             oos.writeObject(historyEntries);
-            oos.close();
         } catch (IOException e) {
             say("problem writing history file: " + historyFile + " ex:" + e);
         }

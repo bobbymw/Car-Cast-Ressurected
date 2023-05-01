@@ -6,12 +6,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.SortedSet;
 
-import android.content.Context;
 import android.util.Log;
 
 import com.weinmann.ccr.core.Config;
@@ -21,6 +18,7 @@ public class MetaHolder {
 
 	private final List<MetaFile> metas = new ArrayList<>();
 	private final Config mConfig;
+	private static int currentPodcastInPlayer = -1;
 
 	public MetaHolder(Config config) {
         	this(config, null);
@@ -29,11 +27,64 @@ public class MetaHolder {
 	public MetaHolder(Config config, File current) {
 		mConfig = config;
 		loadMeta(current);
+		fixCurrentPodcastInPlayer();
+	}
+
+	public MetaFile getCurrentMeta() {
+		fixCurrentPodcastInPlayer();
+
+		return get(currentPodcastInPlayer);
+	}
+
+	public boolean setCurrentMeta(int desiredPosition) {
+		currentPodcastInPlayer = desiredPosition;
+		fixCurrentPodcastInPlayer();
+		return currentPodcastInPlayer == desiredPosition;
+	}
+
+	public boolean setCurrentMetaByTitle(String title) {
+		boolean found = false;
+		for (int i = 0; i < getSize(); i++) {
+			if (metas.get(i).getTitle().equals(title)) {
+				currentPodcastInPlayer = i;
+				found = true;
+				break;
+			}
+		}
+
+		fixCurrentPodcastInPlayer();
+
+		return found;
+	}
+
+	public int getCurrentPodcastInPlayer() {
+		return currentPodcastInPlayer;
+	}
+
+	public String getCurrentTitle() {
+		if (getSize() == 0) {
+			return "No podcasts loaded.\nUse 'Menu' and 'Download Podcasts'";
+		}
+		return getCurrentMeta().getTitle();
+	}
+
+	public MetaFile get(int i) {
+		return metas.isEmpty() ? null : metas.get(i);
+	}
+
+	public int getSize() {
+		return metas.size();
 	}
 
 	public void delete(int i) {
 		metas.get(i).delete();
 		metas.remove(i);
+
+		// If we are playing something after what's deleted, adjust the current
+		if (currentPodcastInPlayer > i)
+			currentPodcastInPlayer--;
+
+		fixCurrentPodcastInPlayer();
 	}
 
 	public void purgeAll() {
@@ -44,12 +95,21 @@ public class MetaHolder {
 		metas.clear();
 	}
 
-	public MetaFile get(int current) {
-		return metas.get(current);
-	}
+	public void deleteListenedTo() {
+		MetaFile currentMetaFile = getCurrentMeta();
 
-	public int getSize() {
-		return metas.size();
+		for (int i = getSize() - 1; i >= 0; i--) {
+			MetaFile metaFile = metas.get(i);
+			if (currentMetaFile == metaFile) {
+				continue;
+			}
+			if (metaFile.getDurationMs() <= 0) {
+				continue;
+			}
+			if (metaFile.isListenedTo()) {
+				delete(i);
+			}
+		}
 	}
 
 	/* Really a part of the constructor -- assumes "metas" is empty */
@@ -65,8 +125,8 @@ public class MetaHolder {
 
 		// Load files in proper order
 		if (order.exists()) {
-			try {
-				DataInputStream dis = new DataInputStream(new FileInputStream(order));
+			try (FileInputStream fis = new FileInputStream(order);
+				DataInputStream dis = new DataInputStream(fis)) {
 				String line = null;
 				while ((line = dis.readLine()) != null) {
 					File file = mConfig.getPodcastRootPath(line);
@@ -152,7 +212,7 @@ public class MetaHolder {
                    saveOrder();
 	}
 
-	boolean alreadyHas(File file) {
+	private boolean alreadyHas(File file) {
 		for (MetaFile metaFile : metas) {
 			if (metaFile.getFilename().equals(file.getName())) {
 				return true;
@@ -251,15 +311,27 @@ public class MetaHolder {
 		}
 	}
 
-        // IMPORTANT:
-        // The regular expression used here *must* match the file naming scheme used in
-        // DownloadHelper.downloadNewPodCasts().
-        private boolean isPriority(File file)
-        {
-           String pattern = "^\\d+:\\d\\d:\\d+\\..*"; // E.g. "YYYY:00:XXXX.mp3"
-           boolean priority = file.getName().matches(pattern);
+	// IMPORTANT:
+	// The regular expression used here *must* match the file naming scheme used in
+	// DownloadHelper.downloadNewPodCasts().
+	private boolean isPriority(File file) {
+	   String pattern = "^\\d+:\\d\\d:\\d+\\..*"; // E.g. "YYYY:00:XXXX.mp3"
+	   boolean priority = file.getName().matches(pattern);
 	   Log.d("CarCastResurrected", "priority: " + priority + " " + file.getName());
-           return priority;
-        }
+	   return priority;
+	}
 
+	private void fixCurrentPodcastInPlayer() {
+		if (getSize() == 0) {
+			currentPodcastInPlayer = -1;
+		}
+
+		if (getSize() <= currentPodcastInPlayer) {
+			currentPodcastInPlayer = getSize() - 1;
+		}
+
+		if (currentPodcastInPlayer < 0) {
+			currentPodcastInPlayer = 0;
+		}
+	}
 }

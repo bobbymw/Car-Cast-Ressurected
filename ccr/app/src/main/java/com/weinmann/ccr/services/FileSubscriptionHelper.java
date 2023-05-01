@@ -2,7 +2,6 @@ package com.weinmann.ccr.services;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -169,8 +168,9 @@ public class FileSubscriptionHelper {
             return resetToDemoSubscriptions();
         }
 
-        try {
-            InputStream dis = new BufferedInputStream(new FileInputStream(subscriptionFile));
+        try (FileInputStream fis = new FileInputStream(subscriptionFile);
+             InputStream dis = new BufferedInputStream(fis)) {
+
             Properties props = new Properties();
             props.load(dis);
 
@@ -199,26 +199,6 @@ public class FileSubscriptionHelper {
         // not found:
         return -1;
     }
-
-    List<Subscription> readLegacySites(InputStream input) throws IOException {
-        List<Subscription> sites = new ArrayList<>();
-        DataInputStream dis = new DataInputStream(input);
-        String line = null;
-        while ((line = dis.readLine()) != null) {
-            int eq = line.indexOf('=');
-            if (eq != -1) {
-                String name = line.substring(0, eq);
-                String url = line.substring(eq + 1);
-                if (Util.isValidURL(url)) {
-                    sites.add(new Subscription(name, url));
-                } // endif
-
-            }
-        }
-
-        return sites;
-    }
-
 
     public boolean removeSubscription(Subscription toRemove) {
         List<Subscription> subs = getSubscriptions();
@@ -261,7 +241,8 @@ public class FileSubscriptionHelper {
     private boolean saveSubscriptions(List<Subscription> subscriptions) {
         try {
             File subscriptionFile = getSubscriptionFile();
-            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(subscriptionFile));
+            FileOutputStream fos = new FileOutputStream(subscriptionFile);
+            BufferedOutputStream bos = new BufferedOutputStream(fos);
             Properties outSubs = new Properties();
             
             for (Subscription sub : subscriptions) {
@@ -271,6 +252,7 @@ public class FileSubscriptionHelper {
             
             outSubs.store(bos, "CarCastResurrected Subscription File v3");
             bos.close();
+            fos.close();
 
             // success:
             return true;
