@@ -23,6 +23,7 @@ import androidx.core.app.ActivityCompat;
 
 import com.weinmann.ccr.R;
 import com.weinmann.ccr.core.CarCastResurrectedApplication;
+import com.weinmann.ccr.core.Config;
 import com.weinmann.ccr.core.MediaMode;
 import com.weinmann.ccr.util.Updater;
 
@@ -142,7 +143,7 @@ public class CarCastResurrected extends BaseActivity {
 
 		ActivityCompat.requestPermissions(
 				this,
-				getConfig().requestedPermissions,
+				Config.requestedPermissions,
 				1
 		);
 

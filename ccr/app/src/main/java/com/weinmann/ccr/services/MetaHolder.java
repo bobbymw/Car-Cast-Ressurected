@@ -18,7 +18,6 @@ public class MetaHolder {
 
 	private final List<MetaFile> metas = new ArrayList<>();
 	private final Config mConfig;
-	private static int currentPodcastInPlayer = -1;
 
 	public MetaHolder(Config config) {
         	this(config, null);
@@ -27,89 +26,19 @@ public class MetaHolder {
 	public MetaHolder(Config config, File current) {
 		mConfig = config;
 		loadMeta(current);
-		fixCurrentPodcastInPlayer();
-	}
-
-	public MetaFile getCurrentMeta() {
-		fixCurrentPodcastInPlayer();
-
-		return get(currentPodcastInPlayer);
-	}
-
-	public boolean setCurrentMeta(int desiredPosition) {
-		currentPodcastInPlayer = desiredPosition;
-		fixCurrentPodcastInPlayer();
-		return currentPodcastInPlayer == desiredPosition;
-	}
-
-	public boolean setCurrentMetaByTitle(String title) {
-		boolean found = false;
-		for (int i = 0; i < getSize(); i++) {
-			if (metas.get(i).getTitle().equals(title)) {
-				currentPodcastInPlayer = i;
-				found = true;
-				break;
-			}
-		}
-
-		fixCurrentPodcastInPlayer();
-
-		return found;
-	}
-
-	public int getCurrentPodcastInPlayer() {
-		return currentPodcastInPlayer;
-	}
-
-	public String getCurrentTitle() {
-		if (getSize() == 0) {
-			return "No podcasts loaded.\nUse 'Menu' and 'Download Podcasts'";
-		}
-		return getCurrentMeta().getTitle();
-	}
-
-	public MetaFile get(int i) {
-		return metas.isEmpty() ? null : metas.get(i);
-	}
-
-	public int getSize() {
-		return metas.size();
 	}
 
 	public void delete(int i) {
 		metas.get(i).delete();
 		metas.remove(i);
-
-		// If we are playing something after what's deleted, adjust the current
-		if (currentPodcastInPlayer > i)
-			currentPodcastInPlayer--;
-
-		fixCurrentPodcastInPlayer();
 	}
 
-	public void purgeAll() {
-		for (MetaFile metafile:metas) {
-			metafile.delete();
-		}
-
-		metas.clear();
+	public MetaFile get(int current) {
+		return metas.get(current);
 	}
 
-	public void deleteListenedTo() {
-		MetaFile currentMetaFile = getCurrentMeta();
-
-		for (int i = getSize() - 1; i >= 0; i--) {
-			MetaFile metaFile = metas.get(i);
-			if (currentMetaFile == metaFile) {
-				continue;
-			}
-			if (metaFile.getDurationMs() <= 0) {
-				continue;
-			}
-			if (metaFile.isListenedTo()) {
-				delete(i);
-			}
-		}
+	public int getSize() {
+		return metas.size();
 	}
 
 	/* Really a part of the constructor -- assumes "metas" is empty */
@@ -319,19 +248,5 @@ public class MetaHolder {
 	   boolean priority = file.getName().matches(pattern);
 	   Log.d("CarCastResurrected", "priority: " + priority + " " + file.getName());
 	   return priority;
-	}
-
-	private void fixCurrentPodcastInPlayer() {
-		if (getSize() == 0) {
-			currentPodcastInPlayer = -1;
-		}
-
-		if (getSize() <= currentPodcastInPlayer) {
-			currentPodcastInPlayer = getSize() - 1;
-		}
-
-		if (currentPodcastInPlayer < 0) {
-			currentPodcastInPlayer = 0;
-		}
 	}
 }

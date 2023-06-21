@@ -6,6 +6,7 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Locale;
 
 import javax.xml.parsers.SAXParser;
 import javax.xml.parsers.SAXParserFactory;
@@ -99,7 +100,7 @@ public class Util {
 	public static String getTimeString(int ms) {
 		int min = ms / (1000 * 60);
 		int sec = (ms - (min * 60 * 1000)) / 1000;
-		String result = String.format("%02d:%02d", min, sec);
+		String result = String.format(Locale.US, "%02d:%02d", min, sec);
 		return result;
 	}
 

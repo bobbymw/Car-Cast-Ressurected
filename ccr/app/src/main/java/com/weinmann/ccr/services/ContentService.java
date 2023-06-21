@@ -38,13 +38,12 @@ import com.weinmann.ccr.core.MusicFocusable;
 import com.weinmann.ccr.core.Util;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.SortedSet;
 
 public class ContentService extends Service implements MediaPlayer.OnCompletionListener, MusicFocusable {
     private final IBinder binder = new LocalBinder();
-    private final MediaNotificationHelper mMediaNotificationHelper = new MediaNotificationHelper(this);
-    private final DownloadNotificationHelper mDownloadNotificationHelper = new DownloadNotificationHelper(this);
+    private final NotificationHelper mNotificationHelper = new NotificationHelper(this);
+    private int currentPodcastInPlayer = -1;
     private DownloadHelper downloadHelper;
     private Location location;
     private MediaMode mediaMode = MediaMode.UnInitialized;
@@ -159,79 +158,73 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
     }
 
-    public void bumpForwardSeconds(int seconds) {
-        if (metaHolder.getCurrentMeta() == null) {
+    public void bumpForwardSeconds(int bump) {
+        if (getCurrentMeta() == null)
             return;
+        try {
+            int npos = mediaPlayer.getCurrentPosition() + bump * 1000;
+            if (npos < 0) {
+                npos = 0;
+            } else if (npos > mediaPlayer.getDuration()) {
+                npos = mediaPlayer.getDuration() - 1;
+            }
+            mediaPlayer.seekTo(npos);
+        } catch (Exception e) {
+            // do nothing
         }
-
-        int offsetMs = seconds * 1000;
-        int ms = mediaPlayer.getCurrentPosition() + offsetMs;
-        seekToMilliseconds(ms);
-    }
-
-    private void seekToMilliseconds(int ms) {
-        int durationMs = getCurrentDurationMs();
-
-        if (durationMs <= 0)
-            return;
-
-        if (ms < 0) {
-            ms = 0;
-        } else if (ms > durationMs) {
-            ms = durationMs - 1;
+        if (!isPlaying()) {
+            saveState();
         }
-
-        if (mediaMode == MediaMode.UnInitialized) {
-            loadPlayerFromCurrentMeta();
-        }
-
-        mediaPlayer.seekTo(ms);
-        metaHolder.getCurrentMeta().setCurrentPosMs(ms);
-        metaHolder.getCurrentMeta().save();
-        notifyPlayPause();
     }
 
     public MetaFile getCurrentMeta() {
-        return metaHolder.getCurrentMeta();
+        if (metaHolder.getSize() == 0) return null;
+        if (currentPodcastInPlayer == -1) return null;
+        if (metaHolder.getSize() <= currentPodcastInPlayer) return null;
+        return metaHolder.get(currentPodcastInPlayer);
     }
 
     private int getCurrentDurationMs() {
-        MetaFile metaFile = metaHolder.getCurrentMeta();
+        MetaFile metaFile = getCurrentMeta();
+
         if (metaFile == null) {
             return 0;
         }
-
-        int dur = metaFile.getDurationMs();
-
-        if (dur <= 0) {
-            metaFile.computeDuration();
-            dur = metaFile.getDurationMs();
+        int dur = getCurrentMeta().getDurationMs();
+        if (dur != -1)
+            return dur;
+        if (mediaMode == MediaMode.UnInitialized) {
+            getCurrentMeta().computeDuration();
+            return getCurrentMeta().getDurationMs();
         }
-
-        return dur;
+        return getCurrentMeta().getDurationMs();
     }
 
-    public File getCurrentFile() {
-        MetaFile meta = metaHolder.getCurrentMeta();
+    private File getCurrentFile() {
+        MetaFile meta = getCurrentMeta();
         return meta == null ? null : meta.file;
     }
 
-    private int getCurrentPositionMsFromMeta() {
-        MetaFile meta = metaHolder.getCurrentMeta();
-        return meta == null ? 0 : meta.getCurrentPosMs();
+    private int getCurrentPositionMs() {
+        MetaFile metaFile = getCurrentMeta();
+
+        if (metaFile == null) {
+            return 0;
+        }
+        return metaHolder.get(currentPodcastInPlayer).getCurrentPosMs();
     }
 
     public int getCurrentProgress() {
-        int duration = getCurrentDurationMs();
-        if (duration <= 0)
+        if (mediaMode == MediaMode.UnInitialized) {
+            int duration = getCurrentDurationMs();
+            if (duration == 0)
+                return 0;
+            return getCurrentPositionMs() * 100 / duration;
+        }
+        if (mediaPlayer.getDuration() == 0) {
             return 0;
-
-        return getCurrentPositionMs() * 100 / duration;
-    }
-
-    private int getCurrentPositionMs() {
-        return mediaMode == MediaMode.UnInitialized ? getCurrentPositionMsFromMeta() :
-                mediaPlayer.getCurrentPosition();
+        }
+        return mediaPlayer.getCurrentPosition() * 100 / mediaPlayer.getDuration();
     }
 
     boolean isDownloading() {
@@ -241,21 +234,30 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public String getCurrentTitle() {
-        if (metaHolder.getSize() > 0) {
+        MetaFile metaFile = getCurrentMeta();
+
+        if (metaFile == null) {
             if (isDownloading()) {
                 return "Downloading podcasts\n" + downloadHelper.getStatus();
             }
+            return "No podcasts loaded.\nUse 'Menu' and 'Download Podcasts'";
         }
-
-        return metaHolder.getCurrentTitle();
+        return metaFile.getTitle();
     }
 
     public void deletePodcast(int position) {
-        if (isPlaying() && metaHolder.getCurrentPodcastInPlayer() == position) {
+        if (isPlaying() && currentPodcastInPlayer == position) {
             pauseNow();
         }
 
         metaHolder.delete(position);
+        if (currentPodcastInPlayer >= metaHolder.getSize()) {
+            if (currentPodcastInPlayer > 0)
+                currentPodcastInPlayer--;
+        }
+        // If we are playing something after what's deleted, adjust the current
+        if (currentPodcastInPlayer > position)
+            currentPodcastInPlayer--;
 
         try {
             fullReset();
@@ -275,13 +277,21 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
 
         if (got == 0 && !getConfig().getNotifyOnZeroDownloads()) {
-            mDownloadNotificationHelper.cancel();
+            mNotificationHelper.cancel(NotificationHelper.DOWNLOAD_NOTIFICATION_ID);
         } else {
 
-            mDownloadNotificationHelper.notify(R.drawable.icon2, "Downloads Finished", "Downloaded " + got + " podcasts.");
+            mNotificationHelper.notifyDownload(R.drawable.icon2,
+                                  "Downloads Finished", "Downloaded " + got + " podcasts.");
         }
 
         metaHolder = new MetaHolder(getConfig(), getCurrentFile());
+        if (getCount() == 0) {
+            return;
+        }
+
+        if (currentPodcastInPlayer >= getCount() || currentPodcastInPlayer < 0) {
+            currentPodcastInPlayer = 0;
+        }
     }
 
     public String encodedDownloadStatus() {
@@ -292,9 +302,22 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         return downloadHelper.getEncodedStatus();
     }
 
-    private boolean fullReset() {
-        loadPlayerFromCurrentMeta();
+    private boolean fullReset() throws Exception {
+        if (mediaPlayer != null) {
+            mediaPlayer.reset();
+        }
+
+        if (getCurrentMeta() == null) {
+            return false;
+        }
+
+        mediaPlayer.setDataSource(getCurrentFile().toString());
+        mediaPlayer.prepare();
+        applyVariableSpeedProperties();
         mediaPlayer.setOnCompletionListener(this);
+
+        mediaPlayer.seekTo(metaHolder.get(currentPodcastInPlayer).getCurrentPosMs());
+        mediaPlayer.pause();
         return true;
     }
 
@@ -311,8 +334,12 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public String getCurrentSubscriptionName() {
-        MetaFile currentMeta = metaHolder.getCurrentMeta();
-        return currentMeta == null ? "" : currentMeta.getFeedName();
+        MetaFile metaFile = getCurrentMeta();
+
+        if (metaFile == null) {
+            return "";
+        }
+        return getCurrentMeta().getFeedName();
     }
 
     public String getDurationString() {
@@ -323,8 +350,8 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         if (isPlaying()) {
             return Util.getTimeString(mediaPlayer.getCurrentPosition());
         }
-        if (metaHolder.getCurrentMeta() != null)
-            return Util.getTimeString(metaHolder.getCurrentMeta().getCurrentPosMs());
+        if (getCurrentMeta() != null)
+            return Util.getTimeString(getCurrentMeta().getCurrentPosMs());
         return "";
     }
 
@@ -337,16 +364,27 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         if (metaHolder.getSize() == 0)
             sb.append('0');
         else
-            sb.append(metaHolder.getCurrentPodcastInPlayer() + 1);
+            sb.append(currentPodcastInPlayer + 1);
         sb.append('/');
         sb.append(metaHolder.getSize());
         return sb.toString();
     }
 
     public void moveToProgressPercentage(double progressPercentage) {
-        int ms = (int) (progressPercentage * getCurrentDurationMs());
-
-        seekToMilliseconds(ms);
+        if (mediaMode == MediaMode.UnInitialized) {
+            if (getCurrentDurationMs() == 0)
+                return;
+            metaHolder.get(currentPodcastInPlayer).setCurrentPosMs((int) (progressPercentage * getCurrentDurationMs()));
+            mediaPlayer.reset();
+            try {
+                mediaPlayer.setDataSource(getCurrentFile().toString());
+                mediaPlayer.prepare();
+            } catch (Exception e) {
+            }
+            mediaMode = MediaMode.Paused;
+            return;
+        }
+        mediaPlayer.seekTo((int) (progressPercentage * mediaPlayer.getDuration()));
     }
 
     // Called when user hits next button. Might be playing or not playing at the
@@ -354,8 +392,8 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     public void next() {
         boolean isPlaying = mediaPlayer.isPlaying();
         if (isPlaying) {
-            metaHolder.getCurrentMeta().setCurrentPosMs(mediaPlayer.getCurrentPosition());
-            metaHolder.getCurrentMeta().save();
+            getCurrentMeta().setCurrentPosMs(mediaPlayer.getCurrentPosition());
+            getCurrentMeta().save();
             mediaPlayer.stop();
         }
         next(isPlaying);
@@ -370,9 +408,8 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     private void next(boolean wasPlaying) {
         mediaMode = MediaMode.UnInitialized;
 
-        boolean positionWasSet = metaHolder.setCurrentMeta(metaHolder.getCurrentPodcastInPlayer() + 1);
         // if we are at end.
-        if (!positionWasSet) {
+        if (currentPodcastInPlayer + 1 >= metaHolder.getSize()) {
             saveState();
             // activity.disableJumpButtons();
             mediaPlayer.reset();
@@ -380,6 +417,8 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             notifyPlayPause();
             return;
         }
+
+        currentPodcastInPlayer++;
 
         if (wasPlaying)
             play();
@@ -401,15 +440,15 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     @Override
     public void onCompletion(MediaPlayer mp) {
-        if (metaHolder.getCurrentMeta() == null)
+        if (getCurrentMeta() == null)
             return;
-        metaHolder.getCurrentMeta().setCurrentPosMs(0);
-        metaHolder.getCurrentMeta().setListenedTo();
-        metaHolder.getCurrentMeta().save();
+        getCurrentMeta().setCurrentPosMs(0);
+        getCurrentMeta().setListenedTo();
+        getCurrentMeta().save();
         if (getConfig().getAutoPlayNext()) {
             next(true);
         } else {
-            disableNotification();
+            disablePlayingNotification();
         }
     }
 
@@ -424,6 +463,9 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         initPhoneStateHandling();
 
         metaHolder = new MetaHolder(getConfig());
+
+        // restore state;
+        currentPodcastInPlayer = 0;
 
         restoreState();
 
@@ -493,7 +535,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, getCurrentSubscriptionName());
         metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_TITLE, title);
         metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, getCurrentDurationMs());
-        metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, metaHolder.getCurrentPodcastInPlayer() + 1);
+        metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, currentPodcastInPlayer + 1);
         metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, metaHolder.getSize());
 
         mMediaSessionCompat.setMetadata(metadataBuilder.build());
@@ -517,7 +559,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     public void onDestroy() {
         super.onDestroy();
         Log.i("CarCastResurrected", "ContentService destroyed");
-        disableNotification();
+        disablePlayingNotification();
 
         giveUpAudioFocus();
         mMediaSessionCompat.release();
@@ -536,8 +578,8 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         if (isPlaying()) {
 
             // Save current position
-            metaHolder.getCurrentMeta().setCurrentPosMs(mediaPlayer.getCurrentPosition());
-            metaHolder.getCurrentMeta().save();
+            getCurrentMeta().setCurrentPosMs(mediaPlayer.getCurrentPosition());
+            getCurrentMeta().save();
 
             mediaPlayer.pause();
             mediaMode = MediaMode.Paused;
@@ -590,12 +632,8 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         if (isPlaying()) {
             mediaPlayer.stop();
         }
-
-        boolean positionWasSet = metaHolder.setCurrentMeta(position);
-
-        if (positionWasSet) {
-            play();
-        }
+        currentPodcastInPlayer = position;
+        play();
     }
 
     public void previous() {
@@ -604,8 +642,11 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             mediaPlayer.stop();
         }
         mediaMode = MediaMode.UnInitialized;
-
-        wasPlaying = metaHolder.setCurrentMeta(metaHolder.getCurrentPodcastInPlayer() - 1);
+        if (currentPodcastInPlayer > 0) {
+            currentPodcastInPlayer--;
+        }
+        if (currentPodcastInPlayer >= metaHolder.getSize())
+            return;
 
         if (wasPlaying) {
             play();
@@ -652,7 +693,18 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         Log.w("CarCastResurrected", "startDownloadingNewPodCasts");
         boolean autoDelete = getConfig().getAutoDelete();
         if (autoDelete) {
-            metaHolder.deleteListenedTo();
+            for (int i = metaHolder.getSize() - 1; i >= 0; i--) {
+                MetaFile metaFile = metaHolder.get(i);
+                if (getCurrentTitle().equals(metaFile.getTitle())) {
+                    continue;
+                }
+                if (metaFile.getDurationMs() <= 0) {
+                    continue;
+                }
+                if (metaFile.isListenedTo()) {
+                    deletePodcast(i);
+                }
+            }
         }
 
         updateDownloadNotification("Downloading podcasts started");
@@ -726,38 +778,32 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             if (location == null) {
                 return;
             }
-
-            boolean found = metaHolder.setCurrentMetaByTitle(location.title);
-
+            boolean found = false;
+            for (int i = 0; i < metaHolder.getSize(); i++) {
+                if (metaHolder.get(i).getTitle().equals(location.title)) {
+                    currentPodcastInPlayer = i;
+                    found = true;
+                    break;
+                }
+            }
             if (!found) {
                 location = null;
                 return;
             }
-            loadPlayerFromCurrentMeta();
+            mediaPlayer.reset();
+            mediaPlayer.setDataSource(getCurrentFile().toString());
+            mediaPlayer.prepare();
+            mediaPlayer.seekTo(getCurrentMeta().getCurrentPosMs());
+            mediaMode = MediaMode.Paused;
         } catch (Throwable e) {
             // bummer.
         }
 
     }
 
-    private void loadPlayerFromCurrentMeta() {
-        mediaPlayer.reset();
-        try {
-            mediaPlayer.setDataSource(getCurrentFile().toString());
-            mediaPlayer.prepare();
-        } catch (IOException ex) {
-            //no-op
-        }
-        mediaPlayer.seekTo(metaHolder.getCurrentMeta().getCurrentPosMs());
-        if (isPlaying()) {
-            mediaPlayer.pause();
-        }
-        mediaMode = MediaMode.Paused;
-    }
-
     public void updateDownloadNotification(String update) {
-        mDownloadNotificationHelper.cancel();
-        mDownloadNotificationHelper.notify(R.drawable.iconbusy, "Downloading started", update);
+        mNotificationHelper.cancel(NotificationHelper.DOWNLOAD_NOTIFICATION_ID);
+        mNotificationHelper.notifyDownload(R.drawable.iconbusy, "Downloading started", update);
     }
 
     public boolean isPlaying() {
@@ -775,9 +821,13 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             mediaPlayer.reset();
         }
         mediaMode = MediaMode.UnInitialized;
-        metaHolder.purgeAll();
-
-        metaHolder = new MetaHolder(getConfig(), getCurrentFile());
+        while (metaHolder.getSize() > 0) {
+            metaHolder.delete(0);
+        }
+        metaHolder = new MetaHolder(getConfig());
+        mediaPlayer.reset();
+        currentPodcastInPlayer = -1;
+        disablePlayingNotification();
     }
 
     public String getDownloadProgress() {
@@ -786,28 +836,23 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         return downloadHelper.sb.toString();
     }
 
-    public void newContentAdded() {
-        metaHolder = new MetaHolder(getConfig(), getCurrentFile());
-    }
-
-    public void directorySettingsChanged() {
+    public void contentUpdated() {
         metaHolder = new MetaHolder(getConfig(), getCurrentFile());
     }
 
     private WakeLock partialWakeLock;
 
-    void disableNotification() {
-        mMediaNotificationHelper.cancel();
+    void disablePlayingNotification() {
+        mNotificationHelper.cancel(NotificationHelper.PLAYING_NOTIFICATION_ID);
         stopForeground(true);
 
         partialWakeLock.release();
     }
 
     private void notifyPlayPause() {
-        float speed = getConfig().getSpeedChoice();
         partialWakeLock.acquire(60*1000L /*1 minute*/);
         updateMediaSessionMetadata();
-        mMediaNotificationHelper.notifyPlayPause(isPlaying(), getCurrentPositionMs(), speed);
+        mNotificationHelper.notifyPlayPause(isPlaying());
     }
 
     public SortedSet<Integer> moveTop(SortedSet<Integer> checkedItems) {

@@ -214,7 +214,7 @@ public class DownloadHelper implements Sayer {
                     }
                     say("-");
                     // update progress for player
-                    contentService.newContentAdded();
+                    contentService.contentUpdated();
 
                 } catch (Throwable e) {
                     say("Problem downloading " + newPodcasts.get(i).getUrl() + " e:" + e);
