@@ -23,7 +23,6 @@ import androidx.core.app.ActivityCompat;
 
 import com.weinmann.ccr.R;
 import com.weinmann.ccr.core.CarCastResurrectedApplication;
-import com.weinmann.ccr.core.Config;
 import com.weinmann.ccr.core.MediaMode;
 import com.weinmann.ccr.util.Updater;
 
@@ -251,7 +250,7 @@ public class CarCastResurrected extends BaseActivity {
 			textView.setText(contentService.getCurrentSubscriptionName());
 
 			textView = findViewById(R.id.title);
-			textView.setText(contentService.currentTitle());
+			textView.setText(contentService.getCurrentTitle());
 
 			textView = findViewById(R.id.location);
 			if (contentService.getMediaMode() == MediaMode.Paused) {
@@ -273,7 +272,7 @@ public class CarCastResurrected extends BaseActivity {
 			textView.setText(contentService.getDurationString());
 
 			ProgressBar progressBar = findViewById(R.id.progress);
-			progressBar.setProgress(contentService.currentProgress());
+			progressBar.setProgress(contentService.getCurrentProgressPercent());
 			updatePausePlay();
 
 		} catch (Throwable e) {

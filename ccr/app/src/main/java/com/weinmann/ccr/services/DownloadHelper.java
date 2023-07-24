@@ -163,8 +163,8 @@ public class DownloadHelper implements Sayer {
                                  */
 
                     if (newPodcasts.get(i).getPriority())
-                        if (contentService.currentMeta() != null)
-                            prefix = contentService.currentMeta().getBaseFilename() + ":00:";
+                        if (contentService.getCurrentMeta() != null)
+                            prefix = contentService.getCurrentMeta().getBaseFilename() + ":00:";
 
                     String castFileName = prefix + System.currentTimeMillis() + localFileExt;
                     File castFile = mConfig.getPodcastRootPath(castFileName);

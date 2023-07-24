@@ -74,9 +74,9 @@ public class MetaFile {
 		try {
 			mediaPlayer.setDataSource(file.toString());
 			mediaPlayer.prepare();
-			setDuration(mediaPlayer.getDuration());
+			setDurationMs(mediaPlayer.getDuration());
 		} catch (Exception e) {
-			setDuration(0);
+			setDurationMs(0);
 		} finally {
 			mediaPlayer.reset();
 			mediaPlayer.release();
@@ -95,13 +95,13 @@ public class MetaFile {
 		getMetaPropertiesFile().delete();
 	}
 
-	public int getCurrentPos() {
+	public int getCurrentPosMs() {
 		if (properties.getProperty("currentPos") == null)
 			return 0;
 		return Integer.parseInt(properties.getProperty("currentPos"));
 	}
 
-	public int getDuration() {
+	public int getDurationMs() {
 		if (properties.get("duration") == null)
 			return -1;
 		return Integer.parseInt(properties.getProperty("duration"));
@@ -151,17 +151,17 @@ public class MetaFile {
 
 	}
 
-	public void setCurrentPos(int i) {
-		properties.setProperty("currentPos", Integer.toString(i));
-		if (getDuration() == -1)
+	public void setCurrentPosMs(int msec) {
+		properties.setProperty("currentPos", Integer.toString(msec));
+		if (getDurationMs() == -1)
 			return;
-		if (i > getDuration() * .9) {
+		if (msec > getDurationMs() * .9) {
 			setListenedTo();
 		}
 	}
 
-	public void setDuration(int duration) {
-		properties.setProperty("duration", Integer.toString(duration));
+	public void setDurationMs(int msec) {
+		properties.setProperty("duration", Integer.toString(msec));
 	}
 
 	public void setListenedTo() {
