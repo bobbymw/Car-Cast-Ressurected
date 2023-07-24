@@ -27,7 +27,6 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.KeyEvent;
 
-import androidx.core.app.NotificationManagerCompat;
 import androidx.media.session.MediaButtonReceiver;
 
 import com.weinmann.ccr.R;
@@ -37,18 +36,15 @@ import com.weinmann.ccr.core.Config;
 import com.weinmann.ccr.core.Location;
 import com.weinmann.ccr.core.MediaMode;
 import com.weinmann.ccr.core.MusicFocusable;
-import com.weinmann.ccr.core.Subscription;
-import com.weinmann.ccr.util.ExportOpml;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.util.List;
 import java.util.SortedSet;
 
 public class ContentService extends Service implements MediaPlayer.OnCompletionListener, MusicFocusable {
     private final IBinder binder = new LocalBinder();
-    private final NotificationHelper mNotificationHelper = new NotificationHelper(this);
-    int currentPodcastInPlayer = -1;
+    private final DownloadNotificationHelper mDownloadNotificationHelper = new DownloadNotificationHelper(this);
+    private final MediaNotificationHelper mMediaNotificationHelper = new MediaNotificationHelper(this);
+    int currentPodcastInPlayer = 0;
     private DownloadHelper downloadHelper;
     private Location location;
     private MediaMode mediaMode = MediaMode.UnInitialized;
@@ -252,6 +248,10 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             }
             return "No podcasts loaded.\nUse 'Menu' and 'Download Podcasts'";
         }
+
+        if (currentMeta() == null) {
+            return "";
+        }
         return currentMeta().getTitle();
     }
 
@@ -306,11 +306,11 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
         SharedPreferences app_preferences = PreferenceManager.getDefaultSharedPreferences(this);
         if (got == 0 && !app_preferences.getBoolean("notifyOnZeroDownloads", true)) {
-            mNotificationHelper.cancel(NotificationHelper.DOWNLOAD_NOTIFICATION_ID);
+            mDownloadNotificationHelper.cancel();
         } else {
 
-            mNotificationHelper.notify(NotificationHelper.DOWNLOAD_NOTIFICATION_ID, R.drawable.icon2,
-                                  "Downloads Finished", "Downloaded " + got + " podcasts.");
+            mDownloadNotificationHelper.notify(R.drawable.icon2, "Downloads Finished",
+                                       "Downloaded " + got + " podcasts.");
         }
 
         metaHolder = new MetaHolder(getConfig(), currentFile());
@@ -360,7 +360,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public String getCurrentSubscriptionName() {
-        if (currentPodcastInPlayer >= metaHolder.getSize()) {
+        if (currentMeta() == null) {
             return "";
         }
         return currentMeta().getFeedName();
@@ -490,7 +490,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         metaHolder = new MetaHolder(getConfig());
 
         // restore state;
-        currentPodcastInPlayer = 0;
+        currentPodcastInPlayer = -1;
 
         restoreState();
 
@@ -554,11 +554,10 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         //Notification icon in card
         metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, icon);
         metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, icon);
-
-        String title = currentTitle();
         metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, icon);
+
         metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, getCurrentSubscriptionName());
-        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, title);
+        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, currentTitle());
         metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, currentPodcastInPlayer);
         metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, metaHolder.getSize());
 
@@ -826,9 +825,8 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public void updateNotification(String update) {
-        mNotificationHelper.cancel(NotificationHelper.DOWNLOAD_NOTIFICATION_ID);
-        mNotificationHelper.notify(NotificationHelper.DOWNLOAD_NOTIFICATION_ID, R.drawable.iconbusy,
-                              "Downloading started", update);
+        mDownloadNotificationHelper.cancel();
+        mDownloadNotificationHelper.notify(R.drawable.iconbusy, "Downloading started", update);
     }
 
     public boolean isPlaying() {
@@ -860,7 +858,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     private WakeLock partialWakeLock;
 
     void disableNotification() {
-        NotificationManagerCompat.from(this).cancel(NotificationHelper.PLAYING_NOTIFICATION_ID);
+        mMediaNotificationHelper.cancel();
         stopForeground(true);
 
         partialWakeLock.release();
@@ -869,8 +867,9 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
 
     private void notifyPlayPause() {
+        float speed = getConfig().getSpeedChoice();
         partialWakeLock.acquire(60*1000L /*1 minute*/);
-        mNotificationHelper.notifyPlayPause(isPlaying());
+        mMediaNotificationHelper.notifyPlayPause(isPlaying(), mediaPlayer.getCurrentPosition(), speed);
     }
 
     public SortedSet<Integer> moveTop(SortedSet<Integer> checkedItems) {

@@ -23,7 +23,8 @@ public class AlarmHostService extends Service {
 	@Override
 	public void onCreate() {
 		super.onCreate();
-		alarm_sender = PendingIntent.getService(AlarmHostService.this, 0, new Intent(AlarmHostService.this, AlarmService.class), 0);
+		alarm_sender = PendingIntent.getService(AlarmHostService.this, 0,
+				new Intent(AlarmHostService.this, AlarmService.class), PendingIntent.FLAG_IMMUTABLE);
 	}
 
 	@Override
