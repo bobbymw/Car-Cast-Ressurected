@@ -198,7 +198,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     public File getCurrentFile() {
         MetaFile meta = getCurrentMeta();
-        return meta == null ? null : meta.file;
+        return meta == null ? null : meta.getFile();
     }
 
     private int getCurrentPositionFromMetaFile() {
@@ -262,26 +262,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
     }
 
-    void deleteUpTo(int upTo) {
-        if (isPlaying()) {
-            pauseNow();
-            mediaPlayer.stop();
-            mediaPlayer.reset();
-        }
-        mediaMode = MediaMode.UnInitialized;
-        if (upTo == -1)
-            upTo = metaHolder.getSize();
-        for (int i = 0; i < upTo; i++) {
-            metaHolder.delete(0);
-        }
-        metaHolder = new MetaHolder(getConfig(), getCurrentFile());
-        tryToRestoreLocation();
-        if (location == null) {
-            currentPodcastInPlayer = -1;
-        }
-    }
-
-    void doDownloadCompletedNotification(int got) {
+    public void doDownloadCompletedNotification(int got) {
 
         // Allow UI to update download text (only when in debug mode) this seems
         // suboptimal
@@ -301,7 +282,8 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
 
         metaHolder = new MetaHolder(getConfig(), getCurrentFile());
-        if (currentPodcastInPlayer >= metaHolder.getSize()) {
+        if (currentPodcastInPlayer >= metaHolder.getSize() ||
+                (currentPodcastInPlayer < 0 && metaHolder.getSize() > 0) ) {
             currentPodcastInPlayer = 0;
         }
     }
@@ -545,7 +527,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
         metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, getCurrentSubscriptionName());
         metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, getCurrentTitle());
-        metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, currentPodcastInPlayer);
+        metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, currentPodcastInPlayer + 1);
         metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, metaHolder.getSize());
 
         mMediaSessionCompat.setMetadata(metadataBuilder.build());
@@ -577,7 +559,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
 
-    void giveUpAudioFocus() {
+    private void giveUpAudioFocus() {
         if (mAudioFocus == AudioFocus.Focused && mAudioFocusHelper != null
                 && mAudioFocusHelper.abandonFocus())
             mAudioFocus = AudioFocus.NoFocusNoDuck;
@@ -825,7 +807,22 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public void purgeAll() {
-        deleteUpTo(-1);
+
+        if (isPlaying()) {
+            pauseNow();
+            mediaPlayer.stop();
+            mediaPlayer.reset();
+        }
+        mediaMode = MediaMode.UnInitialized;
+        int upTo = metaHolder.getSize();
+        for (int i = 0; i < upTo; i++) {
+            metaHolder.delete(0);
+        }
+        metaHolder = new MetaHolder(getConfig(), getCurrentFile());
+        tryToRestoreLocation();
+        if (location == null) {
+            currentPodcastInPlayer = -1;
+        }
     }
 
     public String getDownloadProgress() {
@@ -844,7 +841,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     private WakeLock partialWakeLock;
 
-    void disableNotification() {
+    private void disableNotification() {
         mMediaNotificationHelper.cancel();
         stopForeground(true);
 
