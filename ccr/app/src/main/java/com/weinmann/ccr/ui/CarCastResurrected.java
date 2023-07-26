@@ -177,7 +177,7 @@ public class CarCastResurrected extends BaseActivity {
 	@Override
 	public boolean onMenuItemSelected(int featureId, MenuItem item) {
 		if (item.getItemId() == R.id.purgeAll) {
-			contentService.purgeAll();
+			contentService.deleteAll();
 			return true;
 		}
 		if (item.getItemId() == R.id.downloadNewPodcasts) {

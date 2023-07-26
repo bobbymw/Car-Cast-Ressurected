@@ -67,7 +67,7 @@ public class MetaFile {
            return name.substring(slashIndex + 1, i);
         }
 
-	public void computeDuration() {
+	private void computeDuration() {
 		// ask media player
 		MediaPlayer mediaPlayer = new MediaPlayer();
 		try {
@@ -101,9 +101,18 @@ public class MetaFile {
 	}
 
 	public int getDurationMs() {
-		if (properties.get("duration") == null)
+		Object durationObj = properties.get("duration");
+
+		if (durationObj == null) {
+			computeDuration();
+			durationObj = properties.get("duration");
+		}
+
+		if (durationObj == null) {
 			return -1;
-		return Integer.parseInt(properties.getProperty("duration"));
+		}
+
+		return Integer.parseInt((String) durationObj);
 	}
 
 	public String getFeedName() {

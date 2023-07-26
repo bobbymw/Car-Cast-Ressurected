@@ -6,19 +6,16 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.SortedSet;
 
-import android.content.Context;
 import android.util.Log;
 
 import com.weinmann.ccr.core.Config;
 
 /** Meta information about podcasts. **/
 public class MetaHolder {
-
+	private static int mCurrentPodcast = -1;
 	private final List<MetaFile> metas = new ArrayList<>();
 	private final Config mConfig;
 
@@ -31,13 +28,55 @@ public class MetaHolder {
 		loadMeta(current);
 	}
 
+	public int getCurrentPodcast() { return mCurrentPodcast; }
+
+	public boolean setCurrentPodcast(int index) {
+		mCurrentPodcast = index;
+		fixCurrentPodcast();
+
+		return index >= 0 && index < getSize();
+	}
+
+	public boolean setCurrentPodcast(String title) {
+		for (int i = 0; i < getSize(); i++) {
+			if (get(i).getTitle().equals(title)) {
+				return setCurrentPodcast(i);
+			}
+		}
+
+		return false;
+	}
+
+	public boolean next() {
+		return setCurrentPodcast(mCurrentPodcast + 1);
+	}
+
+	public boolean previous() {
+		return setCurrentPodcast(mCurrentPodcast - 1);
+	}
+
 	public void delete(int i) {
 		metas.get(i).delete();
 		metas.remove(i);
+
+		if (mCurrentPodcast >= i) {
+			previous();
+		}
+	}
+
+	public void deleteAll() {
+		for (MetaFile meta :metas) {
+			meta.delete();
+		}
+		metas.clear();
+		fixCurrentPodcast();
 	}
 
 	public MetaFile get(int current) {
 		return metas.get(current);
+	}
+	public MetaFile getCurrentMeta() {
+		return mCurrentPodcast == -1 ? null : metas.get(mCurrentPodcast);
 	}
 
 	public int getSize() {
@@ -52,99 +91,108 @@ public class MetaHolder {
 		File[] files = mConfig.getPodcastsRoot().listFiles();
         File order = mConfig.getPodcastRootPath("podcast-order.txt");
 
-		if (files == null)
-			return;
+		if (files != null) {
 
-		// Load files in proper order
-		if (order.exists()) {
-			try {
-				DataInputStream dis = new DataInputStream(new FileInputStream(order));
-				String line = null;
-				while ((line = dis.readLine()) != null) {
-					File file = mConfig.getPodcastRootPath(line);
-					if (file.exists()) {
-						metas.add(new MetaFile(file));
-						if (currentName != null && currentName.equals(file.getName()) ) {
-							currentIndex = metas.size() - 1;
-							Log.d("CarCastResurrected", "currentIndex: " + currentIndex);
+			// Load files in proper order
+			if (order.exists()) {
+				try {
+					DataInputStream dis = new DataInputStream(new FileInputStream(order));
+					String line = null;
+					while ((line = dis.readLine()) != null) {
+						File file = mConfig.getPodcastRootPath(line);
+						if (file.exists()) {
+							metas.add(new MetaFile(file));
+							if (currentName != null && currentName.equals(file.getName())) {
+								currentIndex = metas.size() - 1;
+								Log.d("CarCastResurrected", "currentIndex: " + currentIndex);
+							}
 						}
 					}
-				}
-			} catch (IOException e) {
-				Log.e("CarCastResurrected", "reading order file", e);
-			}
-		}
-
-		if ( 0 <= currentIndex && currentIndex < metas.size() )
-		{
-		   // We've already encountered the currently-playing file;
-		   // currentIndex is its position.
-		   // assert 0 <= currentIndex;
-		   // assert currentIndex < metas.size();
-		   String prev, curr;
-		   do
-		   {
-			  currentIndex += 1;
-			  prev = metas.get(currentIndex - 1).getBaseFilename();
-			  curr = metas.get(currentIndex).getBaseFilename();
-		   } while ( currentIndex < metas.size() && curr.equals(prev) );
-		   // currentIndex is now the index *after* the
-		   // currently-playing podcast file and any following priority
-		   // podcasts.
-		   // assert 1 <= currentIndex;
-		   // assert currentIndex <= metas.size();
-		}
-
-		// Fail safe.
-		// The code above looks good to me.  I've tested it in various ways.
-		// However, if there are any errors, it could result in incorrect indexing
-		// into the `metas` array, which would crash the app.
-		// So, just to be safe for the time being, let's leave some code here that
-		// catches any problems.
-		if ( currentIndex < 1 || metas.size() < currentIndex )
-		   // SHOULD NOT HAPPEN!
-		   currentIndex = -1;
-
-		// Look for "Found Files" -- not in ordered list... but sitting in the directory
-		ArrayList<File> foundFiles = new ArrayList<>();
-		for (File file : files) {
-			if (file.length() == 0) {
-				file.delete();
-				continue;
-			}
-			if (file.getName().endsWith(".mp3") || file.getName().endsWith(".3gp") || file.getName().endsWith(".ogg")) {
-				if (!alreadyHas(file)) {
-                                        if ( 0 <= currentIndex && isPriority(file) )
-                                        {
-                                           // The currently-playing podcast is in "podcast-order.txt", so insert the new file
-                                           // immediately after it.
-	                                   Log.d("CarCastResurrected", "adding: " + currentIndex + " " + file.getName());
-                                           metas.add(currentIndex++, new MetaFile(file));
-                                           priorityFileAddedToOrder = true;
-                                        }
-                                        else
-                                           // Just append the new file.  If this is from a priority podcast, it'll sort
-                                           // into the right place anyway.
-                                           foundFiles.add(file);
+				} catch (IOException e) {
+					Log.e("CarCastResurrected", "reading order file", e);
 				}
 			}
-		}
-		// Order the found files by file name.
-		foundFiles.sort((object1, object2) -> object1.getName().compareTo(object2.getName()));
-		Log.i("CarCastResurrected", "loadMeta found:"+foundFiles.size()+" meta:"+metas.size());
-		for (File file : foundFiles) {
-                     metas.add(new MetaFile(file));
+
+			if (0 <= currentIndex && currentIndex < metas.size()) {
+				// We've already encountered the currently-playing file;
+				// currentIndex is its position.
+				// assert 0 <= currentIndex;
+				// assert currentIndex < metas.size();
+				String prev, curr;
+				do {
+					currentIndex += 1;
+					prev = metas.get(currentIndex - 1).getBaseFilename();
+					curr = metas.get(currentIndex).getBaseFilename();
+				} while (currentIndex < metas.size() && curr.equals(prev));
+				// currentIndex is now the index *after* the
+				// currently-playing podcast file and any following priority
+				// podcasts.
+				// assert 1 <= currentIndex;
+				// assert currentIndex <= metas.size();
+			}
+
+			// Fail safe.
+			// The code above looks good to me.  I've tested it in various ways.
+			// However, if there are any errors, it could result in incorrect indexing
+			// into the `metas` array, which would crash the app.
+			// So, just to be safe for the time being, let's leave some code here that
+			// catches any problems.
+			if (currentIndex < 1 || metas.size() < currentIndex)
+				// SHOULD NOT HAPPEN!
+				currentIndex = -1;
+
+			// Look for "Found Files" -- not in ordered list... but sitting in the directory
+			ArrayList<File> foundFiles = new ArrayList<>();
+			for (File file : files) {
+				if (file.length() == 0) {
+					file.delete();
+					continue;
+				}
+				if (file.getName().endsWith(".mp3") || file.getName().endsWith(".3gp") || file.getName().endsWith(".ogg")) {
+					if (!alreadyHas(file)) {
+						if (0 <= currentIndex && isPriority(file)) {
+							// The currently-playing podcast is in "podcast-order.txt", so insert the new file
+							// immediately after it.
+							Log.d("CarCastResurrected", "adding: " + currentIndex + " " + file.getName());
+							metas.add(currentIndex++, new MetaFile(file));
+							priorityFileAddedToOrder = true;
+						} else
+							// Just append the new file.  If this is from a priority podcast, it'll sort
+							// into the right place anyway.
+							foundFiles.add(file);
+					}
+				}
+			}
+			// Order the found files by file name.
+			foundFiles.sort((object1, object2) -> object1.getName().compareTo(object2.getName()));
+			Log.i("CarCastResurrected", "loadMeta found:" + foundFiles.size() + " meta:" + metas.size());
+			for (File file : foundFiles) {
+				metas.add(new MetaFile(file));
+			}
+
+			// We need to save the order if any priority files have been inserted into the ordered
+			// part of the playlist.  If we don't, then those priority files may appear to jump around
+			// in the playlist. For example, if we select a new file for playback and then stop and restart
+			// the app, then the priority files will jump to after the newly-playing file.
+			if (priorityFileAddedToOrder) {
+				saveOrder();
+			}
 		}
 
-                // We need to save the order if any priority files have been inserted into the ordered
-                // part of the playlist.  If we don't, then those priority files may appear to jump around
-                // in the playlist. For example, if we select a new file for playback and then stop and restart
-                // the app, then the priority files will jump to after the newly-playing file.
-                if ( priorityFileAddedToOrder )
-                   saveOrder();
+		fixCurrentPodcast();
 	}
 
-	boolean alreadyHas(File file) {
+	private void fixCurrentPodcast() {
+		if (getSize() == 0) {
+			mCurrentPodcast = -1;
+		} else if (mCurrentPodcast >= getSize()) {
+			mCurrentPodcast = getSize() - 1;
+		} else if (mCurrentPodcast < 0) {
+			mCurrentPodcast = 0;
+		}
+	}
+
+	private boolean alreadyHas(File file) {
 		for (MetaFile metaFile : metas) {
 			if (metaFile.getFilename().equals(file.getName())) {
 				return true;

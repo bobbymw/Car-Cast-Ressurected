@@ -150,7 +150,7 @@ public class PodcastList extends BaseActivity {
 			new AlertDialog.Builder(this).setIcon(android.R.drawable.ic_dialog_alert).setTitle("Delete All?")
 					.setMessage("Do you really want to delete all downloaded podcasts?")
 					.setPositiveButton("Confirm Delete All", (dialog, which) -> {
-						contentService.purgeAll();
+						contentService.deleteAll();
 						list.clear();
 						podcastsAdapter.notifyDataSetChanged();
 						finish();
