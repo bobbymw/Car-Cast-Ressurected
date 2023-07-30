@@ -15,15 +15,12 @@ import android.media.MediaPlayer;
 import android.media.PlaybackParams;
 import android.net.wifi.WifiManager;
 import android.os.Binder;
-import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
 import android.preference.PreferenceManager;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
-import android.telephony.PhoneStateListener;
-import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.KeyEvent;
 
@@ -59,7 +56,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     private SearchHelper searchHelper;
 
     enum PauseReason {
-        PhoneCall,
         UserRequest,  // paused by user request
         FocusLoss,    // paused because of audio focus loss
     }
@@ -189,7 +185,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         return currentMeta.getDurationMs();
     }
 
-    public File getCurrentFile() {
+    private File getCurrentFile() {
         MetaFile meta = getCurrentMeta();
         return meta == null ? null : meta.getFile();
     }
@@ -237,12 +233,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
 
         metaHolder.delete(position);
-
-        try {
-            fullReset();
-        } catch (Throwable e) {
-            // bummer.
-        }
+        loadPlayerFromCurrentMeta();
     }
 
     public void doDownloadCompletedNotification(int got) {
@@ -273,27 +264,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         }
 
         return downloadHelper.getEncodedStatus();
-    }
-
-    private boolean fullReset() throws Exception {
-        if (mediaPlayer != null) {
-            mediaPlayer.reset();
-        }
-
-
-        if (getCurrentMeta() == null) {
-            return false;
-        }
-
-
-        mediaPlayer.setDataSource(getCurrentFile().toString());
-        mediaPlayer.prepare();
-        applyVariableSpeedProperties();
-        mediaPlayer.setOnCompletionListener(this);
-
-        mediaPlayer.seekTo(getCurrentMeta().getCurrentPosMs());
-        mediaPlayer.pause();
-        return true;
     }
 
     private void applyVariableSpeedProperties() {
@@ -343,21 +313,16 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         return sb.toString();
     }
 
-    public void moveTo(double d) {
+    public void moveTo(double percent) {
         if (mediaMode == MediaMode.UnInitialized) {
-            if (getCurrentDurationMs() == 0)
+            if (!loadPlayerFromCurrentMeta()) {
                 return;
-            getCurrentMeta().setCurrentPosMs((int) (d * getCurrentDurationMs()));
-            mediaPlayer.reset();
-            try {
-                mediaPlayer.setDataSource(getCurrentFile().toString());
-                mediaPlayer.prepare();
-            } catch (Exception e) {
             }
-            mediaMode = MediaMode.Paused;
-            return;
         }
-        mediaPlayer.seekTo((int) (d * mediaPlayer.getDuration()));
+
+        int positionMs = (int)(percent * mediaPlayer.getDuration());
+        metaHolder.getCurrentMeta().setCurrentPosMs(positionMs);
+        mediaPlayer.seekTo(positionMs);
     }
 
     // Called when user hits next button. Might be playing or not playing at the
@@ -390,8 +355,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             notifyPlayPause();
             return;
         }
-
-        updateMediaSessionMetadata();
 
         if (wasPlaying) {
             play();
@@ -435,8 +398,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
                 CarCastResurrectedApplication.getAppTitle());
         partialWakeLock.setReferenceCounted(false);
 
-        initPhoneStateHandling();
-
         metaHolder = new MetaHolder(getConfig());
 
         // restore state;
@@ -448,34 +409,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         initNoisyReceiver();
     }
 
-    private void initPhoneStateHandling() {
-        PhoneStateListener phoneStateListener = new PhoneStateListener() {
-            @Override
-            public void onCallStateChanged(int state, String incomingNumber) {
-                super.onCallStateChanged(state, incomingNumber);
-
-                if (state == TelephonyManager.CALL_STATE_OFFHOOK || state == TelephonyManager.CALL_STATE_RINGING) {
-                    // It's possible that this listener is registered before the resetMediaPlayer
-                    // method is called, which establishes the MediaPlayer instance.
-                    if (isPlaying()) {
-                        mPauseReason = PauseReason.PhoneCall;
-                        pauseNow();
-                        bumpForwardSeconds(-5);
-                    }
-                }
-
-                if (state == TelephonyManager.CALL_STATE_IDLE && mPauseReason == PauseReason.PhoneCall) {
-                    mPauseReason = PauseReason.UserRequest;
-                    pauseOrPlay();
-                }
-            }
-        };
-
-        final TelephonyManager telMgr = (TelephonyManager) this.getSystemService(Context.TELEPHONY_SERVICE);
-        telMgr.listen(phoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
-    }
-
-
     private void initMediaSession() {
         ComponentName mediaButtonReceiver = new ComponentName(getApplicationContext(), MediaButtonReceiver.class);
         mMediaSessionCompat = new MediaSessionCompat(getApplicationContext(), "Tag", mediaButtonReceiver, null);
@@ -483,7 +416,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         Intent mediaButtonIntent = new Intent(Intent.ACTION_MEDIA_BUTTON);
         mediaButtonIntent.setClass(this, MediaButtonReceiver.class);
 
-        int pendingIntentFlags = android.os.Build.VERSION.SDK_INT > Build.VERSION_CODES.S ? PendingIntent.FLAG_MUTABLE : 0;
+        int pendingIntentFlags = PendingIntent.FLAG_MUTABLE | PendingIntent.FLAG_UPDATE_CURRENT;
         PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, mediaButtonIntent, pendingIntentFlags);
         mMediaSessionCompat.setCallback(mMediaSessionCallback);
         mMediaSessionCompat.setMediaButtonReceiver(pendingIntent);
@@ -504,9 +437,12 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, icon);
         metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ART, icon);
 
-        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, getCurrentSubscriptionName());
-        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, getCurrentTitle());
+        String subscriptionName = getCurrentSubscriptionName();
+        String title = getCurrentTitle();
+        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, subscriptionName);
+        metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_TITLE, title);
         metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, metaHolder.getCurrentPodcast() + 1);
+        metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, metaHolder.getCurrentMeta().getDurationMs());
         metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, metaHolder.getSize());
 
         mMediaSessionCompat.setMetadata(metadataBuilder.build());
@@ -579,7 +515,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     private void play() {
         try {
-            if (!fullReset())
+            if (!loadPlayerFromCurrentMeta())
                 return;
 
             tryToGetAudioFocus();
@@ -615,13 +551,11 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         mediaMode = MediaMode.UnInitialized;
         boolean isPastBeginning = !metaHolder.previous();
 
-        updateMediaSessionMetadata();
-
         if (!isPastBeginning && wasPlaying)
             play();
     }
 
-    public void restoreState() {
+    private void restoreState() {
         final File stateFile = getConfig().getPodcastRootPath("state.dat");
         if (!stateFile.exists()) {
             location = null;
@@ -638,7 +572,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     }
 
-    public void saveState() {
+    private void saveState() {
         try {
             final File stateFile = getConfig().getPodcastRootPath("state.dat");
             location = Location.save(stateFile, getCurrentTitle());
@@ -675,7 +609,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
             }
         }
 
-        updateNotification("Downloading podcasts started");
+        updateDownloadNotification("Downloading podcasts started");
 
         new Thread(() -> {
             try {
@@ -751,19 +685,41 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
                 location = null;
                 return;
             }
-            mediaPlayer.reset();
-            mediaPlayer.setDataSource(getCurrentFile().toString());
-            mediaPlayer.prepare();
-            mediaPlayer.seekTo(getCurrentMeta().getCurrentPosMs());
-            mediaMode = MediaMode.Paused;
+
+            loadPlayerFromCurrentMeta();
         } catch (Throwable e) {
             // bummer.
         }
 
     }
 
-    public void updateNotification(String update) {
-        mDownloadNotificationHelper.cancel();
+    private boolean loadPlayerFromCurrentMeta() {
+        mediaMode = MediaMode.UnInitialized;
+        mediaPlayer.reset();
+
+        if (getCurrentMeta() == null) {
+            return false;
+        }
+
+        try {
+            mediaPlayer.setDataSource(getCurrentFile().toString());
+            mediaPlayer.prepare();
+            applyVariableSpeedProperties();
+            mediaPlayer.setOnCompletionListener(this);
+
+            mediaPlayer.seekTo(getCurrentMeta().getCurrentPosMs());
+            mediaPlayer.pause();
+            saveState();
+            mediaMode = MediaMode.Paused;
+        } catch (Throwable ex) {
+            return false;
+        }
+
+
+        return true;
+    }
+
+    public void updateDownloadNotification(String update) {
         mDownloadNotificationHelper.notify(R.drawable.iconbusy, "Downloading started", update);
     }
 
@@ -818,6 +774,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     private void notifyPlayPause() {
         float speed = getConfig().getSpeedChoice();
         partialWakeLock.acquire(60*1000L /*1 minute*/);
+        updateMediaSessionMetadata();
         mMediaNotificationHelper.notifyPlayPause(isPlaying(), mediaPlayer.getCurrentPosition(), speed);
     }
 

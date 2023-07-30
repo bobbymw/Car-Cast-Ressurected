@@ -1,10 +1,10 @@
 package com.weinmann.ccr.services;
 
-
 import android.Manifest;
 import android.app.Notification;
+import android.app.PendingIntent;
 import android.content.pm.PackageManager;
-import android.support.v4.media.MediaDescriptionCompat;
+import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 
@@ -40,6 +40,8 @@ public class MediaNotificationHelper extends BaseNotificationHelper {
 
         updatePlaybackState(isPlaying, position, speed, mediaSessionCompat);
 
+        PendingIntent stopIntent = MediaButtonReceiver.buildMediaButtonPendingIntent(mContext, PlaybackStateCompat.ACTION_STOP);
+
         NotificationCompat.Builder builder = getBuilder();
 
         NotificationCompat.Action nextAction = isPlaying ? mPauseAction : mPlayAction;
@@ -52,15 +54,16 @@ public class MediaNotificationHelper extends BaseNotificationHelper {
         MediaSessionCompat.Token token = mediaSessionCompat.getSessionToken();
         builder.setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
                 .setShowActionsInCompactView(1, 2, 3)
+                .setCancelButtonIntent(stopIntent)
+                .setShowCancelButton(true)
                 .setMediaSession(token));
 
-        MediaDescriptionCompat description = mediaSessionCompat.getController().getMetadata().getDescription();
-        builder.setContentTitle(description.getTitle())
-                .setContentText(description.getSubtitle())
+        MediaMetadataCompat metaData = mediaSessionCompat.getController().getMetadata();
+        builder.setContentTitle(metaData.getString(MediaMetadataCompat.METADATA_KEY_ARTIST))
+                .setContentText(metaData.getString(MediaMetadataCompat.METADATA_KEY_TITLE))
                 .setSmallIcon(R.drawable.ccp_launcher)
-                .setLargeIcon(description.getIconBitmap())
-                .setDeleteIntent(
-                        MediaButtonReceiver.buildMediaButtonPendingIntent(mContext, PlaybackStateCompat.ACTION_STOP));
+                .setLargeIcon(metaData.getBitmap(MediaMetadataCompat.METADATA_KEY_ART))
+                .setDeleteIntent(stopIntent);
 
         Notification notification = builder.build();
 

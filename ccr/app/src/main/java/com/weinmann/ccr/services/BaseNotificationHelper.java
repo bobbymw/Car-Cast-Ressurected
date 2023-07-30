@@ -33,8 +33,7 @@ public abstract class BaseNotificationHelper {
         return resultPendingIntent;
     }
 
-    protected void cancel(int notificationId)
-    {
+    protected void cancel(int notificationId) {
         NotificationManagerCompat.from(mContext).cancel(notificationId);
     }
 

@@ -58,7 +58,7 @@ public class CarCastResurrected extends BaseActivity {
 		updateUI();
 	}
 
-	void updatePausePlay() {
+	private void updatePausePlay() {
 		if (contentService == null) {
 			return;
 		}
