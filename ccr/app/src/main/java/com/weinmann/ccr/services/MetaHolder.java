@@ -79,6 +79,15 @@ public class MetaHolder {
 		return mCurrentPodcast == -1 ? null : metas.get(mCurrentPodcast);
 	}
 
+	public int getCurrentDurationMs() {
+		MetaFile currentMeta = getCurrentMeta();
+		if (currentMeta == null) {
+			return 0;
+		}
+
+		return currentMeta.getDurationMs();
+	}
+
 	public int getSize() {
 		return metas.size();
 	}

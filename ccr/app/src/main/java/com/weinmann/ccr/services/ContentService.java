@@ -176,15 +176,6 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         return metaHolder.getCurrentMeta();
     }
 
-    private int getCurrentDurationMs() {
-        MetaFile currentMeta = getCurrentMeta();
-        if (currentMeta == null) {
-            return 0;
-        }
-
-        return currentMeta.getDurationMs();
-    }
-
     private File getCurrentFile() {
         MetaFile meta = getCurrentMeta();
         return meta == null ? null : meta.getFile();
@@ -199,7 +190,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
 
     public int getCurrentProgressPercent() {
         if (mediaMode == MediaMode.UnInitialized) {
-            int duration = getCurrentDurationMs();
+            int duration = metaHolder.getCurrentDurationMs();
             if (duration == 0)
                 return 0;
             return getCurrentPositionFromMetaFile() * 100 / duration;
@@ -286,7 +277,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
     }
 
     public String getDurationString() {
-        return Util.getTimeString(getCurrentDurationMs());
+        return Util.getTimeString(metaHolder.getCurrentDurationMs());
     }
 
     public String getLocationString() {
@@ -442,7 +433,7 @@ public class ContentService extends Service implements MediaPlayer.OnCompletionL
         metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_ARTIST, subscriptionName);
         metadataBuilder.putString(MediaMetadataCompat.METADATA_KEY_TITLE, title);
         metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, metaHolder.getCurrentPodcast() + 1);
-        metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, metaHolder.getCurrentMeta().getDurationMs());
+        metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, metaHolder.getCurrentDurationMs());
         metadataBuilder.putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, metaHolder.getSize());
 
         mMediaSessionCompat.setMetadata(metadataBuilder.build());
