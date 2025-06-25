@@ -68,9 +68,4 @@
         android:summary="Specify player orientation"
         android:title="Orientation Preference" />
 
-    <EditTextPreference
-        android:key="CarCastRoot"
-        android:title="Set data location (loses current subscriptions/podcasts)"
-        android:summary="Changing loses subscriptions and podcasts" />
-
 </PreferenceScreen>

@@ -4,12 +4,12 @@ plugins {
 
 android {
     namespace 'com.weinmann.ccr'
-    compileSdk 33
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.weinmann.ccr"
-        minSdk 28
-        targetSdk 33
+        minSdk 33
+        targetSdk 36
         versionCode 1
         versionName "1.0"
 
@@ -29,8 +29,8 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
     buildFeatures {
         aidl true
@@ -38,12 +38,12 @@ android {
 }
 
 dependencies {
-    implementation 'org.apache.httpcomponents:httpcore:4.4.15'
-    implementation 'org.apache.httpcomponents:httpclient:4.5.13'
-    implementation 'com.google.android.material:material:1.9.0'
-    implementation 'androidx.core:core:1.10.1'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'androidx.media:media:1.6.0'
+    implementation 'org.apache.httpcomponents:httpcore:4.4.16'
+    implementation 'org.apache.httpcomponents:httpclient:4.5.14'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.core:core:1.16.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation 'androidx.media:media:1.7.0'
 }
 
 configurations.implementation {

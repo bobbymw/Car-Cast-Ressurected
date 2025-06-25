@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -25,8 +26,6 @@ import com.weinmann.ccr.services.FileSubscriptionHelper;
 
 public class SearchResults extends BaseActivity {
 
-	private String lastResults;
-
     private void add(int position) {
         ListView listView = findViewById(R.id.siteList);
         Map<String, String> rowData = (Map<String, String>) listView.getAdapter().getItem(position);
@@ -46,10 +45,10 @@ public class SearchResults extends BaseActivity {
 	private List<Subscription> getResults() {
 		List<Subscription> res = new ArrayList<>();
 		try {
-			lastResults = contentService.startSearch("-results-");
+            String lastResults = contentService.startSearch("-results-");
 			String[] lines = lastResults.split("\\n");
 			for (String line : lines) {
-				if (!line.trim().equals("") && !line.startsWith("#")) {
+				if (!line.trim().isEmpty() && !line.startsWith("#")) {
 				    int eq = line.indexOf('=');
 			        if (eq != -1) {
 			            String name = line.substring(0, eq);
@@ -58,7 +57,7 @@ public class SearchResults extends BaseActivity {
 			        }
 				}
 			}
-		} catch (Exception e) {
+		} catch (Exception ignored) {
 		}
 		return res;
 	}
@@ -81,7 +80,7 @@ public class SearchResults extends BaseActivity {
 		AdapterContextMenuInfo info = (AdapterContextMenuInfo) item
 				.getMenuInfo();
 		if (item.getTitle().equals("Subscribe")) {
-			add(info.position);
+			add(Objects.requireNonNull(info).position);
 			return false;
 		}
 		return true;
@@ -120,7 +119,7 @@ public class SearchResults extends BaseActivity {
 			finish();
 			return true;
 		}
-		add(((AdapterContextMenuInfo) item.getMenuInfo()).position);
+		add(((AdapterContextMenuInfo) Objects.requireNonNull(item.getMenuInfo())).position);
 		return true;
 	}
 

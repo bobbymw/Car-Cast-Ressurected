@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
-import android.os.Environment;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
@@ -15,9 +14,7 @@ import androidx.core.content.ContextCompat;
 
 public class Config {
     public static final String[] requestedPermissions = {
-                Manifest.permission.POST_NOTIFICATIONS,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
+                Manifest.permission.POST_NOTIFICATIONS
             };
     private static final String[] orientations = { "AUTO", "Landscape", "Flipped Landscape", "Portrait", "Flipped Portrait" };
     private static final int[] orientationValues = {
@@ -76,9 +73,8 @@ public class Config {
     }
 
     public File getCarCastRoot() {
-        String defaultValue = new File(android.os.Environment.getExternalStorageDirectory(), "carcast").toString();
-        String fileName = getValueOrSetDefault("CarCastRoot", defaultValue);
-        return new File(fileName);
+        File file = new File(this.context.getFilesDir(), "carcast");
+        return file;
     }
 
     public File getPodcastsRoot() {
@@ -99,16 +95,13 @@ public class Config {
     }
 
     public boolean arePermissionsConfigured() {
-        boolean result = (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.R ||
-                Environment.isExternalStorageManager());
+        boolean result = true;
 
-        if (result) {
-            for (String requestedPermission : requestedPermissions) {
-                int permissionResult = ContextCompat.checkSelfPermission(context, requestedPermission);
-                if (permissionResult != PackageManager.PERMISSION_GRANTED) {
-                    result = false;
-                    break;
-                }
+        for (String requestedPermission : requestedPermissions) {
+            int permissionResult = ContextCompat.checkSelfPermission(context, requestedPermission);
+            if (permissionResult != PackageManager.PERMISSION_GRANTED) {
+                result = false;
+                break;
             }
         }
 

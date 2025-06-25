@@ -25,7 +25,6 @@ public abstract class BaseNotificationHelper {
 
     private PendingIntent createPendingIntentForMainActivity() {
         Intent resultIntent = new Intent(mContext , CarCastResurrected.class);
-        // resultIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
         PendingIntent resultPendingIntent = PendingIntent.getActivity(mContext,
                 0 /* Request code */, resultIntent,
